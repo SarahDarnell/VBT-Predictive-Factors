@@ -3,6 +3,9 @@
 
 library(readr)
 library(dplyr)
+library(tableone)
+library(flextable)
+library(officer)
 
 #set working directory
 setwd("~/Sarah work stuff/2025 Data Projects/VBT Predictive Factors CRAMPP2")
@@ -20,12 +23,12 @@ redcap <- redcap %>%
   left_join(age, by = "record_id") %>%
   mutate(Age = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
                       Age, NA))
-###########
-##table 1##
-###########
+#########################
+##Table 1: Demographics##
+#########################
 
 #recode variables
-#group
+#group, and also add to the other events 
 redcap <- redcap %>%
   mutate(group_arm2 = case_match(
     group_arm2, 
@@ -33,7 +36,11 @@ redcap <- redcap %>%
     2 ~ "Pain Free Control", 
     3 ~ "Dysmenorrhea plus Bladder Pain"
   )) %>%
-  rename(Group = group_arm2)
+  rename(Group = group_arm2) %>%
+  group_by(record_id) %>%
+  mutate(Group = first(Group)) %>%
+  slice(-1) %>%
+  ungroup()
 #assigned sex
 redcap <- redcap %>%
   mutate(mh_assigned_sex = case_match(
@@ -200,5 +207,47 @@ redcap <- redcap %>%
   rename(Income = mh_income)  
   
 #saving file
-write_csv(redcap, "Edited data files/redcap.csv")           
+write_csv(redcap, "Edited data files/redcap.csv")  
+
+#Defining vars for table 1
+vars <- c("Age", "Assigned Sex at Birth", "Gender", "Race", "Ethnicity", 
+          "Education", "Employment", "Income", "Vaginal Births", 
+          "Caesarean Section Births", "Nicotine Usage", "THC (Marijuana) Usage", 
+          "Have you ever had a problem with drugs or alcohol?")
+factor_vars <- c("Assigned Sex at Birth", "Gender", "Race", "Ethnicity", 
+                 "Education", "Employment", "Income", "Nicotine Usage", 
+                 "THC (Marijuana) Usage", 
+                 "Have you ever had a problem with drugs or alcohol?")
+redcap_table1 <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1")
+
+#Creating table
+demo <- CreateTableOne(vars, data = redcap_table1, factorVars = factor_vars, 
+                       strata = "Group")
+
+demo_df <- as.data.frame(print(demo, 
+                               nonnormal = "Age",
+                               printToggle = FALSE,
+                               quote = FALSE,
+                               noSpaces = TRUE,
+                               showAllLevels = TRUE))
+
+# Remove p-value/test columns
+cols_to_remove <- c("p", "test")
+demo_df <- demo_df[, !colnames(demo_df) %in% cols_to_remove]
+
+#building flextable
+ft <- flextable(demo_df) %>%
+  bold(i = which(demo_df$Variable != ""), j = 1) %>%            # Bold variable rows
+  align(align = "left", part = "all") %>%                        # Align left
+  fontsize(size = 9, part = "all") %>%                           # Reduce font size
+  set_table_properties(layout = "fixed", width = 1) %>%          # Fixed width layout
+  width(j = 1, width = 2.25) %>%                                 # Widen first column for variable names
+  width(j = 2:ncol(demo_df), width = 1.25) %>%                   # Narrow group columns
+  theme_vanilla()
+
+read_docx() %>%
+  body_add_flextable(ft) %>%
+  print(target = "Tables/VBT_Predictive_Factors_Table1.docx")
+
 
