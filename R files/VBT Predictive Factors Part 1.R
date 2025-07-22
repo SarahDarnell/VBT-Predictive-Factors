@@ -1,5 +1,5 @@
 #VBT Predictive Factors ~ part 1
-#Written by Sarah Darnell, last modified 7.21.25
+#Written by Sarah Darnell, last modified 7.22.25
 
 library(readr)
 library(dplyr)
@@ -235,6 +235,41 @@ demo_df <- as.data.frame(print(demo,
 # Remove p-value/test columns
 cols_to_remove <- c("p", "test")
 demo_df <- demo_df[, !colnames(demo_df) %in% cols_to_remove]
+
+#Step 1: save rownames as a column
+demo_df <- data.frame(rowname = rownames(demo_df), demo_df, row.names = NULL)
+
+# Step 2: Create an empty output data frame
+restructured_df <- data.frame()
+
+# Step 3: Loop through rows and insert variable name before its levels
+current_var <- NA
+
+for (i in seq_len(nrow(demo_df))) {
+  row_label <- demo_df$rowname[i]
+  if (!startsWith(row_label, "  ")) {
+    # Continuous variable row — use as is
+    current_var <- row_label
+    new_row <- demo_df[i, ]
+    new_row$Variable <- current_var
+    restructured_df <- bind_rows(restructured_df, new_row)
+  } else {
+    # Categorical level — insert variable name row if not already added
+    if (!identical(tail(restructured_df$Variable, 1), current_var)) {
+      var_row <- demo_df[i, ]
+      var_row[2:ncol(var_row)] <- ""  # clear values
+      var_row$Variable <- current_var
+      restructured_df <- bind_rows(restructured_df, var_row)
+    }
+    level_row <- demo_df[i, ]
+    level_row$Variable <- ""
+    restructured_df <- bind_rows(restructured_df, level_row)
+  }
+}
+
+# Step 4: Drop original rowname and reorder
+restructured_df <- restructured_df[, c("Variable", setdiff(names(restructured_df), c("rowname", "Variable")))]
+
 
 #building flextable
 ft <- flextable(demo_df) %>%
