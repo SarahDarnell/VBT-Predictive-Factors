@@ -273,16 +273,210 @@ restructured_df <- restructured_df[, c("Variable", setdiff(names(restructured_df
 
 #building flextable
 ft <- flextable(demo_df) %>%
-  bold(i = which(demo_df$Variable != ""), j = 1) %>%            # Bold variable rows
-  align(align = "left", part = "all") %>%                        # Align left
-  fontsize(size = 9, part = "all") %>%                           # Reduce font size
-  set_table_properties(layout = "fixed", width = 1) %>%          # Fixed width layout
-  width(j = 1, width = 2.25) %>%                                 # Widen first column for variable names
-  width(j = 2:ncol(demo_df), width = 1.25) %>%                   # Narrow group columns
+  bold(i = which(demo_df$Variable != ""), j = 1) %>%      # Bold variable rows
+  align(align = "left", part = "all") %>%                 # Align left
+  fontsize(size = 9, part = "all") %>%                    # Reduce font size
+  set_table_properties(layout = "fixed", width = 1) %>%   # Fixed width layout
+  width(j = 1, width = 2.25) %>%                          # Widen first column for variable names
+  width(j = 2:ncol(demo_df), width = 1.25) %>%            # Narrow group columns
   theme_vanilla()
 
 read_docx() %>%
   body_add_flextable(ft) %>%
   print(target = "Tables/VBT_Predictive_Factors_Table1.docx")
+
+######################################################################
+##Table 2: Menstrual Pain Characteristics and Hormonal Therapy Usage##
+######################################################################
+
+#recode variables
+#ocps
+redcap <- redcap %>%
+  mutate(mh_ocps = case_match(
+    mh_ocps, 
+    1 ~ "Currently taking", 
+    2 ~ "Have taken in the past"
+  )) %>%
+  rename(`Oral Contraceptive Pills` = mh_ocps)  
+#patch
+redcap <- redcap %>%
+  mutate(mh_patch = case_match(
+    mh_patch, 
+    1 ~ "Currently taking", 
+    2 ~ "Have taken in the past"
+  )) %>%
+  rename(`Contraceptive Patch` = mh_patch) 
+#ring
+redcap <- redcap %>%
+  mutate(mh_ring = case_match(
+    mh_ring, 
+    1 ~ "Currently taking", 
+    2 ~ "Have taken in the past"
+  )) %>%
+  rename(`Vaginal Ring` = mh_ring)
+#implant
+redcap <- redcap %>%
+  mutate(mh_implant = case_match(
+    mh_implant, 
+    1 ~ "Currently taking", 
+    2 ~ "Have taken in the past"
+  )) %>%
+  rename(`Progestin Implant` = mh_implant)
+#shot
+redcap <- redcap %>%
+  mutate(mh_shot = case_match(
+    mh_shot, 
+    1 ~ "Currently taking", 
+    2 ~ "Have taken in the past"
+  )) %>%
+  rename(`Progestin Shot` = mh_shot)
+#pills
+redcap <- redcap %>%
+  mutate(mh_p_pills = case_match(
+    mh_p_pills, 
+    1 ~ "Currently taking", 
+    2 ~ "Have taken in the past"
+  )) %>%
+  rename(`Progestin Pills` = mh_p_pills)
+#gnrh agonist
+redcap <- redcap %>%
+  mutate(mh_gnrh_agonist = case_match(
+    mh_gnrh_agonist, 
+    1 ~ "Currently taking", 
+    2 ~ "Have taken in the past"
+  )) %>%
+  rename(`GnRH Agonists` = mh_gnrh_agonist)
+#gnrh antagonist
+redcap <- redcap %>%
+  mutate(mh_gnrh_antagonist = case_match(
+    mh_gnrh_antagonist, 
+    1 ~ "Currently taking", 
+    2 ~ "Have taken in the past"
+  )) %>%
+  rename(`GnRH Antagonists` = mh_gnrh_antagonist)
+#hormonal iud
+redcap <- redcap %>%
+  mutate(mh_iudh = case_match(
+    mh_iudh, 
+    1 ~ "Currently taking", 
+    2 ~ "Have taken in the past"
+  )) %>%
+  rename(`Hormonal IUD` = mh_iudh)
+#copper iud
+redcap <- redcap %>%
+  mutate(mh_iudc = case_match(
+    mh_iudc, 
+    1 ~ "Currently taking", 
+    2 ~ "Have taken in the past"
+  )) %>%
+  rename(`Copper IUD` = mh_iudc)
+#Aromatase
+redcap <- redcap %>%
+  mutate(mh_aromatase = case_match(
+    mh_aromatase, 
+    1 ~ "Currently taking", 
+    2 ~ "Have taken in the past"
+  )) %>%
+  rename(`Aromatase Inhibitors` = mh_aromatase)
+#other
+redcap <- redcap %>%
+  mutate(mh_hormonal_other = case_match(
+    mh_hormonal_other, 
+    1 ~ "Currently taking", 
+    2 ~ "Have taken in the past"
+  )) %>%
+  rename(`Other Hormonal Medication` = mh_hormonal_other)
+#period in last 6 months
+redcap <- redcap %>%
+  mutate(mh_period_6months = case_match(
+    mh_period_6months, 
+    1 ~ "Yes", 
+    0 ~ "No"
+  )) %>%
+  rename(`Period in the last 6 months?` = mh_period_6months)
+#painful periods
+redcap <- redcap %>%
+  mutate(mh18_painfulperiodsyn = case_match(
+    mh18_painfulperiodsyn, 
+    1 ~ "Yes", 
+    0 ~ "No"
+  )) %>%
+  rename(`Ever had painful periods?` = mh18_painfulperiodsyn)
+#painful periods at time of menarche
+redcap <- redcap %>%
+  mutate(mh19 = case_match(
+    mh19, 
+    1 ~ "Yes", 
+    0 ~ "No"
+  )) %>%
+  rename(`Painful periods at time of menarche?` = mh19)
+#painful periods age, if not menarche
+redcap <- redcap %>%
+  rename(`What age did your painful periods start, if not menarche?` = mh19a)
+#total years without a period
+redcap <- redcap %>%
+  mutate(mh19b = as.character(mh19b)) %>%
+  mutate(mh19b = case_when(
+    mh19b == 999 ~ "Never, always had regular periods", 
+    mh19b == 0 ~ "Less than 1 year", 
+    mh19b == 11 ~ "More than 10 years", 
+    TRUE ~ mh19b
+  )) %>%
+  rename(`Total years since menarche without a period` = mh19b)
+#days of menstrual pain >= 4 a month
+redcap <- redcap %>%
+  rename(`Days with menstrual pelvic pain >= 4 in an average month` = mh20)
+#days of work/school/activities missed due to painful periods last 3 months
+redcap <- redcap %>%
+  rename(`Days of missed work, school, or activities due 
+          to painful period in last 3 months` = mh21)
+#days in bed due to painful periods last 3 months
+redcap <- redcap %>%
+  rename(`Days spent in bed due to painful period in last 3 months` = mh22)
+#period pain last 3 months with no pain relievers
+redcap <- redcap %>%
+  rename(`Average pain during worst day of period when not taking pain relievers
+          in last 3 months (VAS)` = mh23)
+#period pain last 3 months with nsaid pain relievers
+redcap <- redcap %>%
+  rename(`Average pain during worst day of period when taking NSAID 
+          pain relievers in last 3 months (VAS)` = mh23a)
+#period pain last 3 months with acetaminophen pain relievers
+redcap <- redcap %>%
+  rename(`Average pain during worst day of period when taking acetaminophen 
+          pain relievers in last 3 months (VAS)` = mh27b)
+#menstrual cycle regularity 
+redcap <- redcap %>%
+  mutate(mh24 = case_match(
+    mh24, 
+    0 ~ "Usually or always irregular", 
+    1 ~ "Sometimes irregular", 
+    2 ~ "Always regular", 
+    4 ~ "Using a type of birth control that prevents periods"
+  )) %>%
+  rename(`Menstrual Cycle Regularity` = mh24)
+#menstrual cycle length
+redcap <- redcap %>%
+  mutate(mh25 = case_match(
+    mh25, 
+    1 ~ "1-21 days", 
+    2 ~ "22-35 days", 
+    3 ~ "Greater than 35 days"
+  )) %>%
+  rename(`Menstrual Cycle Length` = mh25)
+#menstrual phase
+redcap <- redcap %>%
+  mutate(
+    vbt_instructions_and_urgency_zones_timestamp = 
+      as.POSIXct(vbt_instructions_and_urgency_zones_timestamp, 
+                 format = "%Y-%m-%d %H:%M:%S"),
+    mh26 = as.Date(mh26),
+    `day of cycle` = floor(abs(as.numeric(difftime(
+      vbt_instructions_and_urgency_zones_timestamp, mh26, units = "days"))))
+  ) %>%
+  mutate(`Menstrual Cycle Phase` = case_when(
+    `day of cycle` <= 14 ~ "Follicular Phase", 
+    `day of cycle` >= 15 ~ "Luteal Phase"
+  ))
 
 
