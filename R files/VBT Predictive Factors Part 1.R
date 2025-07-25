@@ -296,87 +296,99 @@ read_docx() %>%
 #recode variables
 #ocps
 redcap <- redcap %>%
-  mutate(mh_ocps = case_match(
-    mh_ocps, 
-    1 ~ "Currently taking", 
-    2 ~ "Have taken in the past"
+  mutate(mh_ocps = case_when(
+    mh_ocps == 1 ~ "Currently taking",
+    mh_ocps == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_ocps) ~ "Have never taken"
   )) 
 #patch
 redcap <- redcap %>%
-  mutate(mh_patch = case_match(
-    mh_patch, 
-    1 ~ "Currently taking", 
-    2 ~ "Have taken in the past"
+  mutate(mh_patch = case_when(
+    mh_patch == 1 ~ "Currently taking",
+    mh_patch == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_patch) ~ "Have never taken"
   )) 
 #ring
 redcap <- redcap %>%
-  mutate(mh_ring = case_match(
-    mh_ring, 
-    1 ~ "Currently taking", 
-    2 ~ "Have taken in the past"
+  mutate(mh_ring = case_when(
+    mh_ring == 1 ~ "Currently taking",
+    mh_ring == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_ring) ~ "Have never taken"
   )) 
 #implant
 redcap <- redcap %>%
-  mutate(mh_implant = case_match(
-    mh_implant, 
-    1 ~ "Currently taking", 
-    2 ~ "Have taken in the past"
+  mutate(mh_implant = case_when(
+    mh_implant == 1 ~ "Currently taking",
+    mh_implant == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_implant) ~ "Have never taken"
   )) 
 #shot
 redcap <- redcap %>%
-  mutate(mh_shot = case_match(
-    mh_shot, 
-    1 ~ "Currently taking", 
-    2 ~ "Have taken in the past"
+  mutate(mh_shot = case_when(
+    mh_shot == 1 ~ "Currently taking",
+    mh_shot == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_shot) ~ "Have never taken"
   )) 
 #pills
 redcap <- redcap %>%
-  mutate(mh_p_pills = case_match(
-    mh_p_pills, 
-    1 ~ "Currently taking", 
-    2 ~ "Have taken in the past"
+  mutate(mh_p_pills = case_when(
+    mh_p_pills == 1 ~ "Currently taking",
+    mh_p_pills == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_p_pills) ~ "Have never taken"
   )) 
 #gnrh agonist
 redcap <- redcap %>%
-  mutate(mh_gnrh_agonist = case_match(
-    mh_gnrh_agonist, 
-    1 ~ "Currently taking", 
-    2 ~ "Have taken in the past"
+  mutate(mh_gnrh_agonist = case_when(
+    mh_gnrh_agonist == 1 ~ "Currently taking",
+    mh_gnrh_agonist == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_gnrh_agonist) ~ "Have never taken"
   ))
 #gnrh antagonist
 redcap <- redcap %>%
-  mutate(mh_gnrh_antagonist = case_match(
-    mh_gnrh_antagonist, 
-    1 ~ "Currently taking", 
-    2 ~ "Have taken in the past"
+  mutate(mh_gnrh_antagonist = case_when(
+    mh_gnrh_antagonist == 1 ~ "Currently taking",
+    mh_gnrh_antagonist == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_gnrh_antagonist) ~ "Have never taken"
   )) 
 #hormonal iud
 redcap <- redcap %>%
-  mutate(mh_iudh = case_match(
-    mh_iudh, 
-    1 ~ "Currently taking", 
-    2 ~ "Have taken in the past"
+  mutate(mh_iudh = case_when(
+    mh_iudh == 1 ~ "Currently taking",
+    mh_iudh == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_iudh) ~ "Have never taken"
   )) 
 #copper iud
 redcap <- redcap %>%
-  mutate(mh_iudc = case_match(
-    mh_iudc, 
-    1 ~ "Currently taking", 
-    2 ~ "Have taken in the past"
+  mutate(mh_iudc = case_when(
+    mh_iudc == 1 ~ "Currently taking",
+    mh_iudc == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_iudc) ~ "Have never taken"
   ))
 #Aromatase
 redcap <- redcap %>%
-  mutate(mh_aromatase = case_match(
-    mh_aromatase, 
-    1 ~ "Currently taking", 
-    2 ~ "Have taken in the past"
+  mutate(mh_aromatase = case_when(
+    mh_aromatase == 1 ~ "Currently taking",
+    mh_aromatase == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_aromatase) ~ "Have never taken"
   )) 
 #other
 redcap <- redcap %>%
-  mutate(mh_hormonal_other = case_match(
-    mh_hormonal_other, 
-    1 ~ "Currently taking", 
-    2 ~ "Have taken in the past"
+  mutate(mh_hormonal_other = case_when(
+    mh_hormonal_other == 1 ~ "Currently taking",
+    mh_hormonal_other == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_hormonal_other) ~ "Have never taken"
   ))
 #period in last 6 months
 redcap <- redcap %>%
@@ -394,10 +406,11 @@ redcap <- redcap %>%
   )) 
 #painful periods at time of menarche
 redcap <- redcap %>%
-  mutate(mh19 = case_match(
-    mh19, 
-    1 ~ "Yes", 
-    0 ~ "No"
+  mutate(mh19 = case_when(
+    mh19 == 1 ~ "Yes",
+    mh19 == 0 ~ "No",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh19) ~ "Have never had painful periods"
   )) 
 #total years without a period (making new var with only 0-10 numeric, keeping
 #old var for reference later)
