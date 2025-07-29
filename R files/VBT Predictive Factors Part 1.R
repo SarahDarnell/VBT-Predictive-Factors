@@ -647,3 +647,421 @@ ft <- flextable(table2) %>%
 read_docx() %>%
   body_add_flextable(ft) %>%
   print(target = "Tables/VBT_Predictive_Factors_Table2.docx")
+
+############################
+##Table 3: Medical History##
+############################
+
+#converting some of the diagnoses variables from logical to numeric
+logicals <- c("mh_anx", "mh_dep", "mh_cancer", "mh_ibs", "mh_kidney_stone", 
+              "mh_endo", "mh_fibroids", "mh_cysts", "mh_diarrhea", "mh_uti", 
+              "mh_vag_infection", "mh_child_pelvic", "mh_heart", "mh_kidney", 
+              "mh_lung", "mh_liver", "mh_pid", "mh_constipation", 
+              "mh_cyst_surg", "mh_ovary_surg", "mh_vaginal_surg", 
+              "mh_other_surg", "mh_fibroid_surg")
+redcap <- redcap %>%
+  mutate(across(all_of(logicals), as.numeric))
+
+#recode variables
+#medical insurance
+redcap <- redcap %>%
+  mutate(mh_insurance_yn = case_match(
+    mh_insurance_yn,
+    1 ~ "Yes", 
+    0 ~ "No"
+  ))
+#regular physician
+redcap <- redcap %>%
+  mutate(mh_physician_yn = case_match(
+    mh_physician_yn,
+    1 ~ "Yes", 
+    0 ~ "No"
+  ))
+#diagnosed anxiety
+redcap <- redcap %>%
+  mutate(mh_anx = case_when(
+    mh_anx == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_anx) ~ "No"
+  ))
+#diagnosed depression
+redcap <- redcap %>%
+  mutate(mh_dep = case_when(
+    mh_dep == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_dep) ~ "No"
+  ))
+#diagnosed cancer
+redcap <- redcap %>%
+  mutate(mh_cancer = case_when(
+    mh_cancer == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_cancer) ~ "No"
+  ))
+#diagnosed ibs
+redcap <- redcap %>%
+  mutate(mh_ibs = case_when(
+    mh_ibs == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_ibs) ~ "No"
+  ))
+#diagnosed kidney stone
+redcap <- redcap %>%
+  mutate(mh_kidney_stone = case_when(
+    mh_kidney_stone == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_kidney_stone) ~ "No"
+  ))
+#diagnosed endo
+redcap <- redcap %>%
+  mutate(mh_endo = case_when(
+    mh_endo == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_endo) ~ "No"
+  ))
+#diagnosed fibroids
+redcap <- redcap %>%
+  mutate(mh_fibroids = case_when(
+    mh_fibroids == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_fibroids) ~ "No"
+  ))
+#diagnosed cysts
+redcap <- redcap %>%
+  mutate(mh_cysts = case_when(
+    mh_cysts == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_cysts) ~ "No"
+  ))
+#diagnosed PID
+redcap <- redcap %>%
+  mutate(mh_pid = case_when(
+    mh_pid == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_pid) ~ "No"
+  ))
+#diagnosed constipation
+redcap <- redcap %>%
+  mutate(mh_constipation = case_when(
+    mh_constipation == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_constipation) ~ "No"
+  ))
+#diagnosed diarrhea
+redcap <- redcap %>%
+  mutate(mh_diarrhea = case_when(
+    mh_diarrhea == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_diarrhea) ~ "No"
+  ))
+#diagnosed uti
+redcap <- redcap %>%
+  mutate(mh_uti = case_when(
+    mh_uti == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_uti) ~ "No"
+  ))
+#diagnosed vaginal infection
+redcap <- redcap %>%
+  mutate(mh_vag_infection = case_when(
+    mh_vag_infection == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_vag_infection) ~ "No"
+  ))
+#diagnosed child pelvic problem
+redcap <- redcap %>%
+  mutate(mh_child_pelvic = case_when(
+    mh_child_pelvic == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_child_pelvic) ~ "No"
+  ))
+#diagnosed heart condition
+redcap <- redcap %>%
+  mutate(mh_heart = case_when(
+    mh_heart == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_heart) ~ "No"
+  ))
+#diagnosed kidney condition
+redcap <- redcap %>%
+  mutate(mh_kidney = case_when(
+    mh_kidney == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_kidney) ~ "No"
+  ))
+#diagnosed lung condition
+redcap <- redcap %>%
+  mutate(mh_lung = case_when(
+    mh_lung == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_lung) ~ "No"
+  ))
+#diagnosed liver condition
+redcap <- redcap %>%
+  mutate(mh_liver = case_when(
+    mh_liver == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_liver) ~ "No"
+  ))
+#fibroid surg
+redcap <- redcap %>%
+  mutate(mh_fibroid_surg = case_when(
+    mh_fibroid_surg == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_fibroid_surg) ~ "No"
+  ))
+#cyst surg
+redcap <- redcap %>%
+  mutate(mh_cyst_surg = case_when(
+    mh_cyst_surg == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_cyst_surg) ~ "No"
+  ))
+#ovary surg
+redcap <- redcap %>%
+  mutate(mh_ovary_surg = case_when(
+    mh_ovary_surg == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_ovary_surg) ~ "No"
+  ))
+#vaginal surg
+redcap <- redcap %>%
+  mutate(mh_vaginal_surg = case_when(
+    mh_vaginal_surg == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_vaginal_surg) ~ "No"
+  ))
+#other pelvic surg
+redcap <- redcap %>%
+  mutate(mh_other_surg = case_when(
+    mh_other_surg == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_other_surg) ~ "No"
+  ))
+#acetaminophen use
+redcap <- redcap %>%
+  mutate(mh_acetaminophen_yn = case_match(
+    mh_acetaminophen_yn,
+    1 ~ "Yes", 
+    0 ~ "No"
+  ))
+#acetaminophen amounts
+redcap <- redcap %>%
+  mutate(mh_acetaminophen_amount = case_match(
+    mh_acetaminophen_amount,
+    1 ~ "1-2", 
+    2 ~ "3-5", 
+    3 ~ "6-14", 
+    4 ~ "15+"
+  ))
+#ibuprofen use
+redcap <- redcap %>%
+  mutate(mh_ibuprofen_yn = case_match(
+    mh_ibuprofen_yn,
+    1 ~ "Yes", 
+    0 ~ "No"
+  ))
+#ibuprofen amounts
+redcap <- redcap %>%
+  mutate(mh_ibuprofen_amount = case_match(
+    mh_ibuprofen_amount,
+    1 ~ "1-2", 
+    2 ~ "3-5", 
+    3 ~ "6-14", 
+    4 ~ "15+"
+  ))
+#other med use
+redcap <- redcap %>%
+  mutate(mh_othermeds_yn = case_match(
+    mh_othermeds_yn,
+    1 ~ "Yes", 
+    0 ~ "No"
+  ))
+#other med amounts
+redcap <- redcap %>%
+  mutate(mh_othermed_amount = case_match(
+    mh_othermed_amount,
+    1 ~ "1-2", 
+    2 ~ "3-5", 
+    3 ~ "6-14", 
+    4 ~ "15+"
+  ))
+#beta blocker use
+redcap <- redcap %>%
+  mutate(mh_betablocker = case_when(
+    mh_betablocker == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_betablocker) ~ "No"
+  ))
+#triptans use
+redcap <- redcap %>%
+  mutate(mh_triptans = case_when(
+    mh_triptans == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_triptans) ~ "No"
+  ))
+#antidepressants use
+redcap <- redcap %>%
+  mutate(mh_antidepressants = case_when(
+    mh_antidepressants == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_antidepressants) ~ "No"
+  ))
+#tranq use
+redcap <- redcap %>%
+  mutate(mh_tranq = case_when(
+    mh_tranq == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_tranq) ~ "No"
+  ))
+
+#saving file
+write_csv(redcap, "Edited data files/redcap.csv")  
+
+#Defining vars for table 3
+redcap_table3 <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  rename(
+    `Has Medical Insurace` = mh_insurance_yn,
+    `Has a Regular Physician` = mh_physician_yn, 
+    `Diagnosed with anxiety` = mh_anx, 
+    `Diagnosed with depression` = mh_dep, 
+    `Diagnosed with invasive cancer` = mh_cancer, 
+    `Diagnosed with IBS, Crohn's or Ulcerative Colitis` = mh_ibs, 
+    `Diagnosed with kidney stones` = mh_kidney_stone, 
+    `Diagnosed with endometriosis (w/o chronic pain)` = mh_endo,
+    `Diagnosed with fibroids` = mh_fibroids, 
+    `Diagnosed with persistant ovarian cysts` = mh_cysts, 
+    `Diagnosed with pelvic inflammatory disease` = mh_pid, 
+    `Diagnosed with chronic constipation` = mh_constipation, 
+    `Diagnosed with chronic diarrhea` = mh_diarrhea, 
+    `Diagnosed with repeated UTIs` = mh_uti, 
+    `Diagnosed with repeated vaginal infections` = mh_vag_infection, 
+    `Diagnosed with childhood pelvic health problem` = mh_child_pelvic, 
+    `Diagnosed with chronic heart condition (needing treatment)` = mh_heart, 
+    `Diagnosed with chronic kidney condition (needing treatment)` = mh_kidney, 
+    `Diagnosed with chronic lung condition (needing treatment)` = mh_lung, 
+    `Diagnosed with chronic liver condition (needing treatment)` = mh_liver, 
+    `Fibroid removal surgery` = mh_fibroid_surg, 
+    `Ovarian cyst removal surgery` = mh_ovary_surg, 
+    `Vaginal surgery` = mh_vaginal_surg, 
+    `Other major pelvic surgery` = mh_other_surg, 
+    `Used acetaminophen regulary in past year to treat menstrual pain` = mh_acetaminophen_yn, 
+    `Number of acetaminophen tablets taken on average per period` = mh_acetaminophen_amount, 
+    `Used ibuprofen regulary in past year to treat menstrual pain` = mh_ibuprofen_yn, 
+    `Number of ibuprofen tablets taken on average per period` = mh_ibuprofen_amount, 
+    `Used other anti-inflammatory regulary in past year to treat menstrual pain` = mh_othermeds_yn, 
+    `Number of other anti-inflammatory tablets taken on average per period` = mh_othermed_amount, 
+    `Used beta-blockers regularly in past year (for any indication)` = mh_betablocker, 
+    `Used triptans regularly in past year (for any indication)` = mh_triptans,
+    `Used antidepressants regularly in past year (for any indication)` = mh_antidepressants, 
+    `Used minor tranquilizers regularly in past year (for any indication)` = mh_tranq
+  )
+
+vars = c("Has Medical Insurace", "Has a Regular Physician", "Diagnosed with anxiety", 
+         "Diagnosed with depression", "Diagnosed with invasive cancer", 
+         "Diagnosed with IBS, Crohn's or Ulcerative Colitis", "Diagnosed with kidney stones", 
+         "Diagnosed with endometriosis (w/o chronic pain)", "Diagnosed with fibroids", 
+         "Diagnosed with persistant ovarian cysts", "Diagnosed with pelvic inflammatory disease", 
+         "Diagnosed with chronic constipation", "Diagnosed with chronic diarrhea", 
+         "Diagnosed with repeated UTIs", "Diagnosed with repeated vaginal infections", 
+         "Diagnosed with childhood pelvic health problem", 
+         "Diagnosed with chronic heart condition (needing treatment)", 
+         "Diagnosed with chronic kidney condition (needing treatment)",
+         "Diagnosed with chronic lung condition (needing treatment)", 
+         "Diagnosed with chronic liver condition (needing treatment)", 
+         "Fibroid removal surgery", "Ovarian cyst removal surgery", "Vaginal surgery", 
+         "Other major pelvic surgery", 
+         "Used acetaminophen regulary in past year to treat menstrual pain", 
+         "Number of acetaminophen tablets taken on average per period", 
+         "Used ibuprofen regulary in past year to treat menstrual pain", 
+         "Number of ibuprofen tablets taken on average per period", 
+         "Used other anti-inflammatory regulary in past year to treat menstrual pain", 
+         "Number of other anti-inflammatory tablets taken on average per period", 
+         "Used beta-blockers regularly in past year (for any indication)", 
+         "Used triptans regularly in past year (for any indication)", 
+         "Used antidepressants regularly in past year (for any indication)", 
+         "Used minor tranquilizers regularly in past year (for any indication)"
+         )
+
+#Creating summary table 3
+sum <- CreateTableOne(vars, data = redcap_table3, factorVars = vars, 
+                      strata = "Group")
+
+sum_df <- as.data.frame(print(sum,
+                              printToggle = FALSE,
+                              quote = FALSE,
+                              noSpaces = TRUE,
+                              showAllLevels = TRUE, 
+                              pValues = FALSE))
+
+#Creating table with comparisons for DYS and DYSB
+redcap_table3_p <- redcap_table3 %>%
+  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
+
+comp <- CreateTableOne(vars, data = redcap_table3_p, factorVars = vars, 
+                       strata = "Group")
+
+comp_df <- as.data.frame(print(comp,
+                               printToggle = FALSE,
+                               quote = FALSE,
+                               noSpaces = TRUE,
+                               showAllLevels = TRUE, 
+                               pValues = TRUE)) %>%
+  dplyr::select("p")
+
+#merge summary and comparison tables
+table3 <- cbind(sum_df, p_dys_dysb = comp_df$p )
+
+#reformat and save table
+#Step 1: save rownames as a column
+table3 <- data.frame(rowname = rownames(table3), table3, row.names = NULL)
+
+# Step 2: Create an empty output data frame
+restructured_df <- data.frame()
+
+# Step 3: Loop through rows and insert variable name before its levels
+current_var <- NA
+
+for (i in seq_len(nrow(table3))) {
+  row_label <- table3$rowname[i]
+  if (!startsWith(row_label, "  ")) {
+    # Continuous variable row — use as is
+    current_var <- row_label
+    new_row <- table3[i, ]
+    new_row$Variable <- current_var
+    restructured_df <- bind_rows(restructured_df, new_row)
+  } else {
+    # Categorical level — insert variable name row if not already added
+    if (!identical(tail(restructured_df$Variable, 1), current_var)) {
+      var_row <- table3[i, ]
+      var_row[2:ncol(var_row)] <- ""  # clear values
+      var_row$Variable <- current_var
+      restructured_df <- bind_rows(restructured_df, var_row)
+    }
+    level_row <- table3[i, ]
+    level_row$Variable <- ""
+    restructured_df <- bind_rows(restructured_df, level_row)
+  }
+}
+
+# Step 4: Drop original rowname and reorder
+restructured_df <- restructured_df[, c("Variable", setdiff(names(restructured_df), c("rowname", "Variable")))]
+
+
+#building flextable
+ft <- flextable(table3) %>%
+  bold(i = which(table3$Variable != ""), j = 1) %>%      # Bold variable rows
+  align(align = "left", part = "all") %>%                 # Align left
+  fontsize(size = 9, part = "all") %>%                    # Reduce font size
+  set_table_properties(layout = "fixed", width = 1) %>%   # Fixed width layout
+  width(j = 1, width = 2.25) %>%                          # Widen first column for variable names
+  width(j = 2:ncol(table3), width = 1.25) %>%            # Narrow group columns
+  theme_vanilla()
+
+read_docx() %>%
+  body_add_flextable(ft) %>%
+  print(target = "Tables/VBT_Predictive_Factors_Table3.docx")
+
+
+
