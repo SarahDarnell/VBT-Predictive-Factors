@@ -1,5 +1,5 @@
 #VBT Predictive Factors ~ part 1
-#Written by Sarah Darnell, last modified 7.25.25
+#Written by Sarah Darnell, last modified 7.29.25
 
 library(readr)
 library(dplyr)
@@ -486,7 +486,7 @@ redcap <- redcap %>%
 #saving file
 write_csv(redcap, "Edited data files/redcap.csv")  
 
-#Defining vars for table 1
+#Defining vars for table 2
 redcap_table2 <- redcap %>%
   filter(redcap_event_name == "virtual_assessment_arm_1") %>%
   rename(
@@ -551,11 +551,11 @@ factor_vars <- c("Oral Contraceptive Pills", "Contraceptive Patch", "Vaginal Rin
                   "Used hormonal therpary to treat menstrual pain", 
                   "Bladder, bowel, or abdomino-pelvic pain outside of period in last 3 months")
 
-#Creating table
-demo <- CreateTableOne(vars, data = redcap_table2, factorVars = factor_vars, 
+#Creating summary table 2
+sum <- CreateTableOne(vars, data = redcap_table2, factorVars = factor_vars, 
                        strata = "Group")
 
-demo_df <- as.data.frame(print(demo, 
+sum_df <- as.data.frame(print(sum, 
                                nonnormal = c("What age did your painful periods start, if not menarche?",
                                              "Years since menarche without a period",
                                              "Days with menstrual pelvic pain >= 4 in an average month", 
@@ -568,14 +568,39 @@ demo_df <- as.data.frame(print(demo,
                                printToggle = FALSE,
                                quote = FALSE,
                                noSpaces = TRUE,
-                               showAllLevels = TRUE))
+                               showAllLevels = TRUE, 
+                               pValues = FALSE))
 
-# Remove p-value/test columns
-cols_to_remove <- c("p", "test")
-demo_df <- demo_df[, !colnames(demo_df) %in% cols_to_remove]
+#Creating table with comparisons for DYS and DYSB
+redcap_table2_p <- redcap_table2 %>%
+  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
 
+comp <- CreateTableOne(vars, data = redcap_table2_p, factorVars = factor_vars, 
+                       strata = "Group")
+
+comp_df <- as.data.frame(print(comp, 
+                               nonnormal = c("What age did your painful periods start, if not menarche?",
+                                             "Years since menarche without a period",
+                                             "Days with menstrual pelvic pain >= 4 in an average month", 
+                                             "Days of missed work, school, or activities due to painful period in last 3 months", 
+                                             "Days spent in bed due to painful period in last 3 months",
+                                             "Average pain during worst day of period when not taking pain relievers in last 3 months (VAS)",
+                                             "Average pain during worst day of period when taking NSAID pain relievers in last 3 months (VAS)",
+                                             "Average pain during worst day of period when taking acetaminophen pain relievers in last 3 months (VAS)", 
+                                             "Pain with tampon test"),
+                               printToggle = FALSE,
+                               quote = FALSE,
+                               noSpaces = TRUE,
+                               showAllLevels = TRUE, 
+                               pValues = TRUE)) %>%
+  dplyr::select("p")
+
+#merge summary and comparison tables
+table2 <- cbind(sum_df, p_dys_dysb = comp_df$p )
+
+#reformat and save table
 #Step 1: save rownames as a column
-demo_df <- data.frame(rowname = rownames(demo_df), demo_df, row.names = NULL)
+table2 <- data.frame(rowname = rownames(table2), table2, row.names = NULL)
 
 # Step 2: Create an empty output data frame
 restructured_df <- data.frame()
@@ -583,23 +608,23 @@ restructured_df <- data.frame()
 # Step 3: Loop through rows and insert variable name before its levels
 current_var <- NA
 
-for (i in seq_len(nrow(demo_df))) {
-  row_label <- demo_df$rowname[i]
+for (i in seq_len(nrow(table2))) {
+  row_label <- table2$rowname[i]
   if (!startsWith(row_label, "  ")) {
     # Continuous variable row — use as is
     current_var <- row_label
-    new_row <- demo_df[i, ]
+    new_row <- table2[i, ]
     new_row$Variable <- current_var
     restructured_df <- bind_rows(restructured_df, new_row)
   } else {
     # Categorical level — insert variable name row if not already added
     if (!identical(tail(restructured_df$Variable, 1), current_var)) {
-      var_row <- demo_df[i, ]
+      var_row <- table2[i, ]
       var_row[2:ncol(var_row)] <- ""  # clear values
       var_row$Variable <- current_var
       restructured_df <- bind_rows(restructured_df, var_row)
     }
-    level_row <- demo_df[i, ]
+    level_row <- table2[i, ]
     level_row$Variable <- ""
     restructured_df <- bind_rows(restructured_df, level_row)
   }
@@ -610,13 +635,13 @@ restructured_df <- restructured_df[, c("Variable", setdiff(names(restructured_df
 
 
 #building flextable
-ft <- flextable(demo_df) %>%
-  bold(i = which(demo_df$Variable != ""), j = 1) %>%      # Bold variable rows
+ft <- flextable(table2) %>%
+  bold(i = which(table2$Variable != ""), j = 1) %>%      # Bold variable rows
   align(align = "left", part = "all") %>%                 # Align left
   fontsize(size = 9, part = "all") %>%                    # Reduce font size
   set_table_properties(layout = "fixed", width = 1) %>%   # Fixed width layout
   width(j = 1, width = 2.25) %>%                          # Widen first column for variable names
-  width(j = 2:ncol(demo_df), width = 1.25) %>%            # Narrow group columns
+  width(j = 2:ncol(table2), width = 1.25) %>%            # Narrow group columns
   theme_vanilla()
 
 read_docx() %>%
