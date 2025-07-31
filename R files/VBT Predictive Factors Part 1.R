@@ -1,5 +1,5 @@
 #VBT Predictive Factors ~ part 1
-#Written by Sarah Darnell, last modified 7.29.25
+#Written by Sarah Darnell, last modified 7.31.25
 
 library(readr)
 library(dplyr)
@@ -847,13 +847,13 @@ redcap <- redcap %>%
   ))
 #acetaminophen amounts
 redcap <- redcap %>%
-  mutate(mh_acetaminophen_amount = case_match(
-    mh_acetaminophen_amount,
-    1 ~ "1-2", 
-    2 ~ "3-5", 
-    3 ~ "6-14", 
-    4 ~ "15+"
-  ))
+  mutate(mh_acetaminophen_amount = case_when(
+    mh_acetaminophen_amount == 1 ~ "1-2", 
+    mh_acetaminophen_amount == 2 ~ "3-5", 
+    mh_acetaminophen_amount == 3 ~ "6-14", 
+    mh_acetaminophen_amount == 4 ~ "15+", 
+    mh_acetaminophen_yn == "No" ~ "0"
+  )) 
 #ibuprofen use
 redcap <- redcap %>%
   mutate(mh_ibuprofen_yn = case_match(
@@ -863,13 +863,13 @@ redcap <- redcap %>%
   ))
 #ibuprofen amounts
 redcap <- redcap %>%
-  mutate(mh_ibuprofen_amount = case_match(
-    mh_ibuprofen_amount,
-    1 ~ "1-2", 
-    2 ~ "3-5", 
-    3 ~ "6-14", 
-    4 ~ "15+"
-  ))
+  mutate(mh_ibuprofen_amount = case_when(
+    mh_ibuprofen_amount == 1 ~ "1-2", 
+    mh_ibuprofen_amount == 2 ~ "3-5", 
+    mh_ibuprofen_amount == 3 ~ "6-14", 
+    mh_ibuprofen_amount == 4 ~ "15+", 
+    mh_ibuprofen_yn == "No" ~ "0"
+  )) 
 #other med use
 redcap <- redcap %>%
   mutate(mh_othermeds_yn = case_match(
@@ -879,13 +879,13 @@ redcap <- redcap %>%
   ))
 #other med amounts
 redcap <- redcap %>%
-  mutate(mh_othermed_amount = case_match(
-    mh_othermed_amount,
-    1 ~ "1-2", 
-    2 ~ "3-5", 
-    3 ~ "6-14", 
-    4 ~ "15+"
-  ))
+  mutate(mh_othermed_amount = case_when(
+    mh_othermed_amount == 1 ~ "1-2", 
+    mh_othermed_amount == 2 ~ "3-5", 
+    mh_othermed_amount == 3 ~ "6-14", 
+    mh_othermed_amount == 4 ~ "15+", 
+    mh_othermeds_yn == "No" ~ "0"
+  )) 
 #beta blocker use
 redcap <- redcap %>%
   mutate(mh_betablocker = case_when(
