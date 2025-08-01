@@ -1,5 +1,5 @@
 #VBT Predictive Factors ~ part 1
-#Written by Sarah Darnell, last modified 7.31.25
+#Written by Sarah Darnell, last modified 8.1.25
 
 library(readr)
 library(dplyr)
@@ -23,6 +23,11 @@ redcap <- redcap %>%
   left_join(age, by = "record_id") %>%
   mutate(Age = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
                       Age, NA))
+
+#remove invalid records (see analysis notes)
+redcap <- redcap %>%
+  filter(record_id != 1154)
+
 #########################
 ##Table 1: Demographics##
 #########################
@@ -30,17 +35,18 @@ redcap <- redcap %>%
 #recode variables
 #group, and also add to the other events 
 redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(
+    group_arm2 = first(na.omit(group_arm2))
+  ) %>%
+  ungroup() %>%
   mutate(group_arm2 = case_match(
     group_arm2, 
     1 ~ "Dysmenorrhea", 
     2 ~ "Pain Free Control", 
     3 ~ "Dysmenorrhea plus Bladder Pain"
   )) %>%
-  rename(Group = group_arm2) %>%
-  group_by(record_id) %>%
-  mutate(Group = first(Group)) %>%
-  slice(-1) %>%
-  ungroup()
+  rename(Group = group_arm2)
 #assigned sex
 redcap <- redcap %>%
   mutate(mh_assigned_sex = case_match(
@@ -1062,6 +1068,48 @@ ft <- flextable(table3) %>%
 read_docx() %>%
   body_add_flextable(ft) %>%
   print(target = "Tables/VBT_Predictive_Factors_Table3.docx")
+
+######################################
+##Table 4: Pain and Sensory Profiles##
+######################################
+
+#recode variables
+#bps/ic criteria
+redcap <- redcap %>%
+  mutate(bps_ic_bl = case_match(
+    bps_ic_bl,
+    1 ~ "Yes", 
+    0 ~ "No"
+  ))
+#ibs criteria
+redcap <- redcap %>%
+  mutate(ibs_bl = case_match(
+    ibs_bl,
+    1 ~ "Yes", 
+    0 ~ "No"
+  ))
+#copc bodymap summed score
+redcap <- redcap %>%
+  mutate(copc_sum = copcy_bodymap_ans1___1 + copcy_bodymap_ans1___2 +
+         copcy_bodymap_ans1___3 + copcy_bodymap_ans1___4 + copcy_bodymap_ans1___5 
+         + copcy_bodymap_ans1___6 + copcy_bodymap_ans1___7 + copcy_bodymap_ans1___8
+         + copcy_bodymap_ans1___9 + copcy_bodymap_ans1___10 + copcy_bodymap_ans1___11
+         + copcy_bodymap_ans1___12 + copc_bodymap_ans2___13 + copc_bodymap_ans2___14
+         + copc_bodymap_ans2___15 + copc_bodymap_ans2___16 + copc_bodymap_ans2___17
+         + copc_bodymap_ans2___18 + copc_bodymap_ans2___19 + copc_bodymap_ans2___20
+         + copc_bodymap_ans2___21 + copc_bodymap_ans2___22 + copc_bodymap_ans2___23)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
