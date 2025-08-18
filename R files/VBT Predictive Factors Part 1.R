@@ -204,7 +204,7 @@ redcap <- redcap %>%
   )) 
   
 #saving file
-write_csv(redcap, "Edited data files/redcap.csv")  
+write_csv(redcap, "Edited data files/redcap_post_table1.csv")  
 
 #Defining vars for table 1
 redcap_table1 <- redcap %>%
@@ -410,6 +410,12 @@ redcap <- redcap %>%
     1 ~ "Yes", 
     0 ~ "No"
   )) 
+#days of pain above a 4, fixed so that when mh18_painfulperiodsyn == 0, mh20 == 0
+redcap <- redcap %>%
+  mutate(mh20 = case_when(
+    mh18_painfulperiodsyn == "No" ~ 0, 
+    TRUE ~ mh20
+  ))
 #painful periods at time of menarche
 redcap <- redcap %>%
   mutate(mh19 = case_when(
@@ -490,7 +496,7 @@ redcap <- redcap %>%
   ))
 
 #saving file
-write_csv(redcap, "Edited data files/redcap.csv")  
+write_csv(redcap, "Edited data files/redcap_post_table2.csv")  
 
 #Defining vars for table 2
 redcap_table2 <- redcap %>%
@@ -922,7 +928,7 @@ redcap <- redcap %>%
   ))
 
 #saving file
-write_csv(redcap, "Edited data files/redcap.csv")  
+write_csv(redcap, "Edited data files/redcap_post_table3.csv")  
 
 #Defining vars for table 3
 redcap_table3 <- redcap %>%
@@ -1098,18 +1104,138 @@ redcap <- redcap %>%
          + copc_bodymap_ans2___15 + copc_bodymap_ans2___16 + copc_bodymap_ans2___17
          + copc_bodymap_ans2___18 + copc_bodymap_ans2___19 + copc_bodymap_ans2___20
          + copc_bodymap_ans2___21 + copc_bodymap_ans2___22 + copc_bodymap_ans2___23)
+#vulvodynia criteria
+redcap <- redcap %>%
+  mutate(`Meets criteria for Vulvodynia` = copc_vulvo_1 + copc_vulvo_2) %>%
+  mutate(`Meets criteria for Vulvodynia` = case_match(
+    `Meets criteria for Vulvodynia`, 
+    2 ~ "Yes", 
+    1 ~ "No", 
+    0 ~ "No"
+  ))
+#endometriosis critiera
+redcap <- redcap %>%
+  mutate(`Meets criteria for Diagnosed Endometriosis` = copc_endo_1 + 
+           copc_endo_2 + copc_endo_3) %>%
+  mutate(`Meets criteria for Diagnosed Endometriosis` = case_match(
+    `Meets criteria for Diagnosed Endometriosis`, 
+    3 ~ "Yes", 
+    2 ~ "No", 
+    1 ~ "No", 
+    0 ~ "No"
+  ))
+#persistent fatigue
+redcap <- redcap %>%
+  mutate(mh_fatigue = case_when(
+    mh_fatigue == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_fatigue) ~ "No"
+  ))
+#sensitivity to sounds
+redcap <- redcap %>%
+  mutate(mh_gss1 = case_when(
+    mh_gss1 == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_gss1) ~ "No"
+  ))
+#sensitivity to odors
+redcap <- redcap %>%
+  mutate(mh_gss2 = case_when(
+    mh_gss2 == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_gss2) ~ "No"
+  ))
+#sensitivity to bright lights
+redcap <- redcap %>%
+  mutate(mh_gss3 = case_when(
+    mh_gss3 == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_gss3) ~ "No"
+  ))
+#sensitivity to chemicals
+redcap <- redcap %>%
+  mutate(mh_gss4 = case_when(
+    mh_gss4 == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_gss4) ~ "No"
+  ))
+#bleeding amount heaviest 
+redcap <- redcap %>%
+  mutate(werf_a2_10 = case_match(
+    werf_a2_10,
+    1 ~ "Spotting",
+    2 ~ "Light", 
+    3 ~ "Moderate",
+    4 ~ "Heavy"
+  ))
+#bleeding amount average
+redcap <- redcap %>%
+  mutate(werf_a2_11 = case_match(
+    werf_a2_11,
+    1 ~ "Spotting",
+    2 ~ "Light", 
+    3 ~ "Moderate",
+    4 ~ "Heavy"
+  ))
+#intercourse
+redcap <- redcap %>%
+  mutate(werf_c15sexyesno = case_match(
+    werf_c15sexyesno, 
+    1 ~ "No",
+    2 ~ "Yes"
+  ))
+#pain with intercourse
+redcap <- redcap %>%
+  mutate(werf_c15 = case_match(
+    werf_c15, 
+    1 ~ "Yes", 
+    0 ~ "No"
+  ))
+#pain with intercourse during last intercourse
+redcap <- redcap %>%
+  mutate(werf_c17 = case_when(
+    werf_c15sexyesno == "No" ~ "No", 
+    werf_c17 == 1 ~ "No", 
+    werf_c17 == 2 ~ "Yes, during intercourse/penetration",
+    werf_c17 == 3 ~ "Yes, in the 24 hours following intercourse/penetration",
+    werf_c17 == 4 ~ "Yes, both during and in the 24 hours following intercourse/penetration"
+  ))
+#pain with intercourse severity 
+redcap <- redcap %>%
+  mutate(werf_c19 = case_when(
+    werf_c19 == 0 ~ 0,
+    werf_c19 == 1 ~ 1, 
+    werf_c19 == 2 ~ 2, 
+    werf_c19 == 3 ~ 3,
+    werf_c19 == 4 ~ 4, 
+    werf_c19 == 5 ~ 5, 
+    werf_c19 == 6 ~ 6, 
+    werf_c19 == 7 ~ 7, 
+    werf_c19 == 8 ~ 8, 
+    werf_c19 == 9 ~ 9, 
+    werf_c19 == 10 ~ 10, 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(werf_c19) ~ 0
+  ))
+#pain with intercourse frequency
+redcap <- redcap %>%
+  mutate(werf_c21 = case_when(
+    werf_c21 == 1 ~ "Occasionally (less than a quarter of times)", 
+    werf_c21 == 2 ~ "Often (a quarter to half of the times)", 
+    werf_c21 == 3 ~ "Usually (more than half of the times)", 
+    werf_c21 == 4 ~ "Always (every time)", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(werf_c21) ~ "Never"
+  ))
+#pain with intercourse causing intercourse to stop
+redcap <- redcap %>%
+  mutate(werf_c23 = case_when(
+    werf_c23 == 1 ~ "Yes", 
+    werf_c23 == 0 ~ "No", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(werf_c23) ~ "No"
+  ))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+#saving file
+write_csv(redcap, "Edited data files/redcap_post_table4.csv") 
 
