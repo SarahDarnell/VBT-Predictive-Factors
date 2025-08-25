@@ -1,5 +1,5 @@
 #VBT Predictive Factors ~ part 1
-#Written by Sarah Darnell, last modified 8.1.25
+#Written by Sarah Darnell, last modified 8.25.25
 
 library(readr)
 library(dplyr)
@@ -1117,12 +1117,13 @@ redcap <- redcap %>%
 redcap <- redcap %>%
   mutate(`Meets criteria for Diagnosed Endometriosis` = copc_endo_1 + 
            copc_endo_2 + copc_endo_3) %>%
-  mutate(`Meets criteria for Diagnosed Endometriosis` = case_match(
-    `Meets criteria for Diagnosed Endometriosis`, 
-    3 ~ "Yes", 
-    2 ~ "No", 
-    1 ~ "No", 
-    0 ~ "No"
+  mutate(`Meets criteria for Diagnosed Endometriosis` = case_when(
+    `Meets criteria for Diagnosed Endometriosis`== 3 ~ "Yes", 
+    `Meets criteria for Diagnosed Endometriosis` == 2 ~ "No", 
+    `Meets criteria for Diagnosed Endometriosis` == 1 ~ "No", 
+    `Meets criteria for Diagnosed Endometriosis` == 0 ~ "No", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(`Meets criteria for Diagnosed Endometriosis`) ~ "No"
   ))
 #persistent fatigue
 redcap <- redcap %>%
@@ -1235,6 +1236,41 @@ redcap <- redcap %>%
     redcap_event_name == "virtual_assessment_arm_1" & 
       is.na(werf_c23) ~ "No"
   ))
+#diary bleeding amount heaviest
+redcap_subset <- redcap %>%
+  group_by(record_id) %>%
+  summarize(
+    dd_bleeding_max = max(pmax(dd_bleeding, dd_bleeding_days, na.rm = TRUE), na.rm = TRUE),
+    .groups = "drop"
+  )
+
+redcap <- redcap %>%
+  left_join(
+    redcap_subset,
+    by = "record_id"
+  ) %>%
+  mutate(
+    dd_bleeding_max = ifelse(redcap_event_name == "virtual_assessment_arm_1", dd_bleeding_max, NA_real_)
+  )
+
+redcap <- redcap %>%
+  mutate(dd_bleeding_max = case_match(
+    dd_bleeding_max,
+    0 ~ "None",
+    1 ~ "Spotting",
+    2 ~ "Light", 
+    3 ~ "Moderate",
+    4 ~ "Heavy"
+  ))  
+
+redcap <- redcap %>%
+  mutate(bleeding_max_consistency = dd_bleeding_max == werf_a2_10)
+
+#uncomment to view counts (72% consistnecy from retroactive report and diaries)
+#redcap %>%
+#  filter(!is.na(bleeding_max_consistency)) %>%
+#  count(bleeding_max_consistency)
+
 
 #saving file
 write_csv(redcap, "Edited data files/redcap_post_table4.csv") 
