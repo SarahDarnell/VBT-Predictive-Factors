@@ -6,6 +6,7 @@ library(dplyr)
 library(tableone)
 library(flextable)
 library(officer)
+library(stringr)
 
 #set working directory
 setwd("~/Sarah work stuff/2025 Data Projects/VBT Predictive Factors CRAMPP2")
@@ -1270,6 +1271,70 @@ redcap <- redcap %>%
 #redcap %>%
 #  filter(!is.na(bleeding_max_consistency)) %>%
 #  count(bleeding_max_consistency)
+
+#diary bleeding pain average
+redcap_subset_2 <- redcap %>%
+  group_by(record_id) %>%
+  filter(str_starts(redcap_event_name, "diary")) %>%
+  summarize(
+    dd_complete_count = n()
+  ) %>%
+  ungroup()
+
+redcap <- redcap %>%
+  left_join(
+    redcap_subset_2,
+    by = "record_id"
+  ) %>%
+  mutate(
+    dd_complete_count = ifelse(redcap_event_name == "virtual_assessment_arm_1", dd_complete_count, NA_real_)
+  )
+
+redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(dd_pain_sum = sum(dd_menstrual, dd_menstrual_days, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(dd_pain_sum = if_else(redcap_event_name == "virtual_assessment_arm_1", 
+                               dd_pain_sum, NA_real_))
+
+redcap <- redcap %>%
+  mutate(dd_avg_menstrual_pain = dd_pain_sum / dd_complete_count)
+
+#diary bleeding amount average, rounded to nearest whole number
+redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(dd_bleeding_sum = sum(dd_bleeding, dd_bleeding_days, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(dd_bleeding_sum = if_else(redcap_event_name == "virtual_assessment_arm_1", 
+                                   dd_bleeding_sum, NA_real_))
+
+redcap <- redcap %>%
+  mutate(dd_avg_bleeding = round(dd_bleeding_sum / dd_complete_count)) %>%
+  mutate(dd_avg_bleeding = case_match(
+    dd_avg_bleeding,
+    0 ~ "None",
+    1 ~ "Spotting",
+    2 ~ "Light", 
+    3 ~ "Moderate",
+    4 ~ "Heavy"
+  ))
+
+redcap <- redcap %>%
+  mutate(bleeding_avg_consistency = dd_avg_bleeding == werf_a2_11)
+
+#uncomment to view counts (59% consistnecy from retroactive report and diaries)
+#redcap %>%
+#  filter(!is.na(bleeding_avg_consistency)) %>%
+#  count(bleeding_avg_consistency)
+
+
+
+
+
+
+
+
+
 
 
 #saving file
