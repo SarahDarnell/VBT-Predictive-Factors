@@ -1,5 +1,5 @@
 #VBT Predictive Factors ~ part 1
-#Written by Sarah Darnell, last modified 8.25.25
+#Written by Sarah Darnell, last modified 8.28.25
 
 library(readr)
 library(dplyr)
@@ -1272,7 +1272,7 @@ redcap <- redcap %>%
 #  filter(!is.na(bleeding_max_consistency)) %>%
 #  count(bleeding_max_consistency)
 
-#diary bleeding pain average
+#diary pain average
 redcap_subset_2 <- redcap %>%
   group_by(record_id) %>%
   filter(str_starts(redcap_event_name, "diary")) %>%
@@ -1327,13 +1327,150 @@ redcap <- redcap %>%
 #  filter(!is.na(bleeding_avg_consistency)) %>%
 #  count(bleeding_avg_consistency)
 
+#number diary days with pain >3
+redcap_subset_3 <- redcap %>%
+  group_by(record_id) %>%
+  filter(str_starts(redcap_event_name, "diary")) %>%
+  mutate(dd_pain_3_day1 = ifelse(dd_menstrual > 3, 1, 0)) %>%
+  mutate(dd_pain_3_day2 = ifelse(redcap_event_name == "diary__day_2_arm_1" & 
+                                   dd_menstrual_days > 3, 1, 0)) %>%
+  mutate(dd_pain_3_day3 = ifelse(redcap_event_name == "diary__day_3_arm_1" & 
+                                   dd_menstrual_days > 3, 1, 0)) %>%
+  mutate(dd_pain_3_day4 = ifelse(redcap_event_name == "diary__day_4_arm_1" & 
+                                   dd_menstrual_days > 3, 1, 0)) %>%
+  mutate(dd_pain_3_day5 = ifelse(redcap_event_name == "diary__day_5_arm_1" & 
+                                   dd_menstrual_days > 3, 1, 0)) %>%
+  mutate(dd_pain_3 = sum(dd_pain_3_day1, dd_pain_3_day2, dd_pain_3_day3, 
+                         dd_pain_3_day4, dd_pain_3_day5, na.rm = TRUE)) %>%
+  slice_head() %>%
+  ungroup() %>%
+  select(1, 361) 
+  
+redcap <- redcap %>%
+  left_join(
+    redcap_subset_3,
+    by = "record_id"
+  ) %>%
+  mutate(
+    dd_pain_3 = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                               dd_pain_3, NA_real_)
+  )
 
+#number diary days with moderate or heavy bleeding
+redcap_subset_4 <- redcap %>%
+  group_by(record_id) %>%
+  filter(str_starts(redcap_event_name, "diary")) %>%
+  mutate(dd_bleeding_m_h_day1 = ifelse(dd_bleeding > 2, 1, 0)) %>%
+  mutate(dd_bleeding_m_h_day2 = ifelse(redcap_event_name == "diary__day_2_arm_1" & 
+                                   dd_bleeding_days > 2, 1, 0)) %>%
+  mutate(dd_bleeding_m_h_day3 = ifelse(redcap_event_name == "diary__day_3_arm_1" & 
+                                         dd_bleeding_days > 2, 1, 0)) %>%
+  mutate(dd_bleeding_m_h_day4 = ifelse(redcap_event_name == "diary__day_4_arm_1" & 
+                                         dd_bleeding_days > 2, 1, 0)) %>%
+  mutate(dd_bleeding_m_h_day5 = ifelse(redcap_event_name == "diary__day_5_arm_1" & 
+                                         dd_bleeding_days > 2, 1, 0)) %>%
+  mutate(dd_bleeding_m_h = sum(dd_bleeding_m_h_day1, dd_bleeding_m_h_day2, 
+                               dd_bleeding_m_h_day3, dd_bleeding_m_h_day4, 
+                               dd_bleeding_m_h_day5, na.rm = TRUE)) %>%
+  slice_head() %>%
+  ungroup() %>%
+  select(1, 362) 
 
+redcap <- redcap %>%
+  left_join(
+    redcap_subset_4,
+    by = "record_id"
+  ) %>%
+  mutate(
+    dd_bleeding_m_h = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                             dd_bleeding_m_h, NA_real_)
+  )
 
+#number diary days with bleeding
+redcap_subset_5 <- redcap %>%
+  group_by(record_id) %>%
+  filter(str_starts(redcap_event_name, "diary")) %>%
+  mutate(dd_bleeding_day1 = ifelse(dd_bleeding > 0, 1, 0)) %>%
+  mutate(dd_bleeding_day2 = ifelse(redcap_event_name == "diary__day_2_arm_1" & 
+                                         dd_bleeding_days > 0, 1, 0)) %>%
+  mutate(dd_bleeding_day3 = ifelse(redcap_event_name == "diary__day_3_arm_1" & 
+                                         dd_bleeding_days > 0, 1, 0)) %>%
+  mutate(dd_bleeding_day4 = ifelse(redcap_event_name == "diary__day_4_arm_1" & 
+                                         dd_bleeding_days > 0, 1, 0)) %>%
+  mutate(dd_bleeding_day5 = ifelse(redcap_event_name == "diary__day_5_arm_1" & 
+                                         dd_bleeding_days > 0, 1, 0)) %>%
+  mutate(dd_bleeding_number = sum(dd_bleeding_day1, dd_bleeding_day2, 
+                                  dd_bleeding_day3, dd_bleeding_day4, 
+                                  dd_bleeding_day5, na.rm = TRUE)) %>%
+  slice_head() %>%
+  ungroup() %>%
+  select(1, 363) 
 
+redcap <- redcap %>%
+  left_join(
+    redcap_subset_5,
+    by = "record_id"
+  ) %>%
+  mutate(
+    dd_bleeding_number = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                                dd_bleeding_number, NA_real_)
+  )
 
+#diary max bowel pain
+redcap_subset_6 <- redcap %>%
+  group_by(record_id) %>%
+  summarize(
+    dd_bowel_max = max(pmax(dd_bowel, dd_bowel_days, na.rm = TRUE), na.rm = TRUE),
+    .groups = "drop"
+  )
 
+redcap <- redcap %>%
+  left_join(
+    redcap_subset_6,
+    by = "record_id"
+  ) %>%
+  mutate(
+    dd_bowel_max = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                          dd_bowel_max, NA_real_)
+  )
 
+#diary max bladder pain
+redcap_subset_7 <- redcap %>%
+  group_by(record_id) %>%
+  summarize(
+    dd_bladder_max = max(pmax(dd_bladder, dd_bladder_days, na.rm = TRUE), na.rm = TRUE),
+    .groups = "drop"
+  )
+
+redcap <- redcap %>%
+  left_join(
+    redcap_subset_7,
+    by = "record_id"
+  ) %>%
+  mutate(
+    dd_bladder_max = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                            dd_bladder_max, NA_real_)
+  )
+
+#diary days using medication, removes anyone without complete diary data
+redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(dd_medication = if (any(
+                             (redcap_event_name == "diary__day_1_arm_1" & 
+                                 is.na(dd_nsaid_yn)) | 
+                             (redcap_event_name == "virtual_assessment_arm_1" & 
+                              dd_complete_count < 5)
+                             ))  {
+    NA_real_
+  } else {
+    sum(dd_nsaid_yn, dd_acetaminophen_yn, dd_painreliever_yn, 
+        dd_painkillers_yn_days, na.rm = TRUE)
+  }) %>%
+  ungroup()
+
+#need to have a way to make sure dd_medication isn't counting the 3 medications
+#in day 1 as 3 different instances of med usage. Some people have 6, max should 
+#be 5
 
 
 
