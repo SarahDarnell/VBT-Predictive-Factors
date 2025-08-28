@@ -1087,14 +1087,30 @@ redcap <- redcap %>%
     bps_ic_bl,
     1 ~ "Yes", 
     0 ~ "No"
-  ))
+  )) %>%
+  group_by(record_id) %>%
+  mutate(
+    bps_ic_bl = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                       bps_ic_bl[redcap_event_name == "consent_ids_arm_1"][1],
+                       NA
+    )
+  ) %>%
+  ungroup()
 #ibs criteria
 redcap <- redcap %>%
   mutate(ibs_bl = case_match(
     ibs_bl,
     1 ~ "Yes", 
     0 ~ "No"
-  ))
+  )) %>%
+  group_by(record_id) %>%
+  mutate(
+    ibs_bl = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                    ibs_bl[redcap_event_name == "consent_ids_arm_1"][1],
+                       NA
+    )
+  ) %>%
+  ungroup()
 #copc bodymap summed score
 redcap <- redcap %>%
   mutate(copc_sum = copcy_bodymap_ans1___1 + copcy_bodymap_ans1___2 +
@@ -1468,12 +1484,123 @@ redcap <- redcap %>%
   }) %>%
   ungroup()
 
-#need to have a way to make sure dd_medication isn't counting the 3 medications
-#in day 1 as 3 different instances of med usage. Some people have 6, max should 
-#be 5
-
-
+redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(dd_medication_multi = case_when(
+    redcap_event_name == "diary__day_1_arm_1" ~ sum(dd_nsaid_yn, 
+                                                    dd_acetaminophen_yn, 
+                                                    dd_painreliever_yn, na.rm = TRUE)
+  )) %>%
+  mutate(dd_medication = case_when(
+    dd_medication_multi == 2 ~ dd_medication - 1, 
+    dd_medication_multi == 3 ~ dd_medication - 2, 
+    dd_medication_multi < 2 ~ dd_medication
+  )) %>%
+  ungroup()
 
 #saving file
 write_csv(redcap, "Edited data files/redcap_post_table4.csv") 
 
+#Defining vars for table 4
+redcap_table4 <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  rename(
+    `Average NMPP, last 7 days` = mcgill_1,
+    `Average dysuria, last 7 days` = mcgill_2, 
+    `Average pain with bowel movements, last 7 days` = mcgill_3, 
+    `Sexual intercourse, last 7 days` = mcgill_4, 
+    `Average dyspareunia, last 7 days` = mcgill_5,
+    `Meets criteria for BPS/IC` = bps_ic_bl, 
+    `Meets criteria for IBS` = ibs_bl, 
+    `Number bodily pain sites, last 30 days` = copc_sum,
+    `Persistent fatigue` = mh_fatigue, 
+    `Sensitivity to sounds` = mh_gss1, 
+    `Sensitivity to odors` = mh_gss2, 
+    `Sensitivity to bright lights` = mh_gss3, 
+    `Sensitivity to chemicals` = mh_gss4,
+    `Bleeding on heaviest day of period` = werf_a2_10, 
+    `Bleeding on average per period` = werf_a2_11, 
+    `Ever had sexual intercourse` = werf_c15sexyesno, 
+    `Ever had dyspareunia`= werf_c15, 
+    `Age when dyspareunia began` = werf_c16, 
+    `Dyspareunia during most recent sexual intercourse` = werf_c17, 
+    `Max severity of dyspareunia during most recent sexual intercourse` = werf_c19, 
+    `Frequency of dyspareunia, last 12 months` = werf_c21, 
+    `Dyspareunia resulting in disruption of sexual intercourse` = werf_c23, 
+    `Days of complete menstrual diary data` = dd_complete_count, 
+    `Days of bleeding reported on diary` = dd_bleeding_number, 
+    `Days of moderate to heavy bleeding reported on diary` = dd_bleeding_m_h,
+    `Average pelvic pain, 24 hours before period onset` = dd_painbefore,
+    `Days with menstrual pain > 3 reported on diary` = dd_pain_3, 
+    `Average menstrual pain reported on diary` = dd_avg_menstrual_pain, 
+    `Max menstrual pain reported on diary` = max_pain_bl, 
+    `Max bowel pain reported on diary` = dd_bowel_max, 
+    `Max bladder pain reported on diary` = dd_bladder_max, 
+    `Days of pain reliever usage reported on diary` = dd_medication
+  )
+
+   
+vars = c("Average NMPP, last 7 days", 
+         "Average dysuria, last 7 days", 
+         "Average pain with bowel movements, last 7 days",
+         "Sexual intercourse, last 7 days", 
+         "Average dyspareunia, last 7 days", 
+         "Meets criteria for BPS/IC", 
+         "Meets criteria for IBS", 
+         "Number bodily pain sites, last 30 days", 
+         "Persistent fatigue", 
+         "Sensitivity to sounds", 
+         "Sensitivity to odors", 
+         "Sensitivity to chemicals", 
+         "Bleeding on heaviest day of period", 
+         "Bleeding on average per period", 
+         "Ever had sexual intercourse", 
+         "Ever had dyspareunia", 
+         "Age when dyspareunia began", 
+         "Dyspareunia during most recent sexual intercourse", 
+         "Max severity of dyspareunia during most recent sexual intercourse", 
+         "Frequency of dyspareunia, last 12 months", 
+         "Dyspareunia resulting in disruption of sexual intercourse", 
+         "Days of complete menstrual diary data", 
+         "Days of bleeding reported on diary", 
+         "Days of moderate to heavy bleeding reported on diary", 
+         "Average pelvic pain, 24 hours before period onset", 
+         "Days with menstrual pain > 3 reported on diary", 
+         "Average menstrual pain reported on diary", 
+         "Max menstrual pain reported on diary", 
+         "Max bowel pain reported on diary", 
+         "Max bladder pain reported on diary", 
+         "Days of pain reliever usage reported on diary", 
+         "Meets criteria for Vulvodynia", 
+         "Meets criteria for Diagnosed Endometriosis"
+)
+    
+factor_vars <- c("Meets criteria for BPS/IC", 
+                 "Meets criteria for IBS",
+                 "Meets criteria for Vulvodynia", 
+                 "Meets criteria for Diagnosed Endometriosis",
+                 "Persistent fatigue", 
+                 "Sensitivity to sounds", 
+                 "Sensitivity to odors", 
+                 "Sensitivity to chemicals",
+                 "Ever had sexual intercourse", 
+                 "Ever had dyspareunia", 
+                 "Dyspareunia during most recent sexual intercourse",
+                 "Frequency of dyspareunia, last 12 months", 
+                 "Dyspareunia resulting in disruption of sexual intercourse",
+)
+    
+##need to coerce answers to "frequency of dyspareunia to never for some 
+#based on notes_sexpain
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
