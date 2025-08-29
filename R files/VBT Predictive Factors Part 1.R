@@ -1,5 +1,5 @@
 #VBT Predictive Factors ~ part 1
-#Written by Sarah Darnell, last modified 8.28.25
+#Written by Sarah Darnell, last modified 8.29.25
 
 library(readr)
 library(dplyr)
@@ -1238,12 +1238,13 @@ redcap <- redcap %>%
 #pain with intercourse frequency
 redcap <- redcap %>%
   mutate(werf_c21 = case_when(
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(werf_c21) ~ "Never", 
+    record_id %in% c(7, 232, 544, 1069, 1541, 1893) ~ "Never", 
     werf_c21 == 1 ~ "Occasionally (less than a quarter of times)", 
     werf_c21 == 2 ~ "Often (a quarter to half of the times)", 
     werf_c21 == 3 ~ "Usually (more than half of the times)", 
-    werf_c21 == 4 ~ "Always (every time)", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(werf_c21) ~ "Never"
+    werf_c21 == 4 ~ "Always (every time)" 
   ))
 #pain with intercourse causing intercourse to stop
 redcap <- redcap %>%
@@ -1496,6 +1497,34 @@ redcap <- redcap %>%
     dd_medication_multi == 3 ~ dd_medication - 2, 
     dd_medication_multi < 2 ~ dd_medication
   )) %>%
+  mutate(
+    dd_medication = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                           dd_medication[redcap_event_name == "diary__day_1_arm_1"][1],
+                         NA
+    )
+  ) %>%
+  ungroup()
+
+#diary max menstrual pain 
+redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(
+    max_pain_bl = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                         max_pain_bl[redcap_event_name == "consent_ids_arm_1"][1],
+                       NA
+    )
+  ) %>%
+  ungroup()
+
+#diary avearge pelvic pain day before period 
+redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(
+    dd_painbefore = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                           dd_painbefore[redcap_event_name == "diary__day_1_arm_1"][1],
+                         NA
+    )
+  ) %>%
   ungroup()
 
 #saving file
@@ -1552,8 +1581,6 @@ vars = c("Average NMPP, last 7 days",
          "Sensitivity to sounds", 
          "Sensitivity to odors", 
          "Sensitivity to chemicals", 
-         "Bleeding on heaviest day of period", 
-         "Bleeding on average per period", 
          "Ever had sexual intercourse", 
          "Ever had dyspareunia", 
          "Age when dyspareunia began", 
@@ -1583,17 +1610,116 @@ factor_vars <- c("Meets criteria for BPS/IC",
                  "Sensitivity to sounds", 
                  "Sensitivity to odors", 
                  "Sensitivity to chemicals",
+                 "Sexual intercourse, last 7 days",
                  "Ever had sexual intercourse", 
                  "Ever had dyspareunia", 
                  "Dyspareunia during most recent sexual intercourse",
                  "Frequency of dyspareunia, last 12 months", 
-                 "Dyspareunia resulting in disruption of sexual intercourse",
+                 "Dyspareunia resulting in disruption of sexual intercourse", 
+                 "Bleeding on heaviest day of period", 
+                 "Bleeding on average per period"
+)
+
+nonnormal_vars <- c("Average NMPP, last 7 days", 
+                    "Average dysuria, last 7 days", 
+                    "Average pain with bowel movements, last 7 days",
+                    "Average dyspareunia, last 7 days",
+                    "Number bodily pain sites, last 30 days",
+                    "Age when dyspareunia began", 
+                    "Max severity of dyspareunia during most recent sexual intercourse", 
+                    "Days of complete menstrual diary data", 
+                    "Days of bleeding reported on diary", 
+                    "Days of moderate to heavy bleeding reported on diary", 
+                    "Average pelvic pain, 24 hours before period onset", 
+                    "Days with menstrual pain > 3 reported on diary", 
+                    "Average menstrual pain reported on diary", 
+                    "Max menstrual pain reported on diary", 
+                    "Max bowel pain reported on diary", 
+                    "Max bladder pain reported on diary", 
+                    "Days of pain reliever usage reported on diary"
 )
     
-##need to coerce answers to "frequency of dyspareunia to never for some 
-#based on notes_sexpain
-    
-    
+#Creating summary table 4
+sum <- CreateTableOne(vars, data = redcap_table4, factorVars = factor_vars, 
+                      strata = "Group")
+
+sum_df <- as.data.frame(print(sum,
+                              nonnormal = nonnormal_vars,
+                              printToggle = FALSE,
+                              quote = FALSE,
+                              noSpaces = TRUE,
+                              showAllLevels = TRUE, 
+                              pValues = FALSE))
+
+#Creating table with comparisons for DYS and DYSB
+redcap_table4_p <- redcap_table4 %>%
+  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
+
+comp <- CreateTableOne(vars, data = redcap_table4_p, factorVars = factor_vars, 
+                       strata = "Group")
+
+comp_df <- as.data.frame(print(comp,
+                               nonnormal = nonnormal_vars,
+                               printToggle = FALSE,
+                               quote = FALSE,
+                               noSpaces = TRUE,
+                               showAllLevels = TRUE, 
+                               pValues = TRUE)) %>%
+  dplyr::select("p")
+
+#merge summary and comparison tables
+table4 <- cbind(sum_df, p_dys_dysb = comp_df$p )
+
+#reformat and save table
+#Step 1: save rownames as a column
+table4 <- data.frame(rowname = rownames(table4), table4, row.names = NULL)
+
+# Step 2: Create an empty output data frame
+restructured_df <- data.frame()
+
+# Step 3: Loop through rows and insert variable name before its levels
+current_var <- NA
+
+for (i in seq_len(nrow(table4))) {
+  row_label <- table4$rowname[i]
+  if (!startsWith(row_label, "  ")) {
+    # Continuous variable row — use as is
+    current_var <- row_label
+    new_row <- table4[i, ]
+    new_row$Variable <- current_var
+    restructured_df <- bind_rows(restructured_df, new_row)
+  } else {
+    # Categorical level — insert variable name row if not already added
+    if (!identical(tail(restructured_df$Variable, 1), current_var)) {
+      var_row <- table4[i, ]
+      var_row[2:ncol(var_row)] <- ""  # clear values
+      var_row$Variable <- current_var
+      restructured_df <- bind_rows(restructured_df, var_row)
+    }
+    level_row <- table4[i, ]
+    level_row$Variable <- ""
+    restructured_df <- bind_rows(restructured_df, level_row)
+  }
+}
+
+# Step 4: Drop original rowname and reorder
+restructured_df <- restructured_df[, c("Variable", setdiff(names(restructured_df), c("rowname", "Variable")))]
+
+
+#building flextable
+ft <- flextable(table4) %>%
+  bold(i = which(table4$Variable != ""), j = 1) %>%      # Bold variable rows
+  align(align = "left", part = "all") %>%                 # Align left
+  fontsize(size = 9, part = "all") %>%                    # Reduce font size
+  set_table_properties(layout = "fixed", width = 1) %>%   # Fixed width layout
+  width(j = 1, width = 2.25) %>%                          # Widen first column for variable names
+  width(j = 2:ncol(table4), width = 1.25) %>%            # Narrow group columns
+  theme_vanilla()
+
+read_docx() %>%
+  body_add_flextable(ft) %>%
+  print(target = "Tables/VBT_Predictive_Factors_Table4.docx")
+
     
     
     
