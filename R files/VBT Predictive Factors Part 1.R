@@ -1,5 +1,5 @@
 #VBT Predictive Factors ~ part 1
-#Written by Sarah Darnell, last modified 8.29.25
+#Written by Sarah Darnell, last modified 9.4.25
 
 library(readr)
 library(dplyr)
@@ -12,7 +12,7 @@ library(stringr)
 setwd("~/Sarah work stuff/2025 Data Projects/VBT Predictive Factors CRAMPP2")
 
 #import redcap pull of variables
-redcap <- read_csv("Raw files/EH22236CRAMPP2-VBTPredictiveFactors_DATA_2025-07-18_1444.csv", 
+redcap <- read_csv("Raw files/EH22236CRAMPP2-VBTPredictiveFactors_DATA_2025-09-04_1051.csv", 
                    col_types = cols(redcap_survey_identifier = col_skip(), 
                                     participant_status_timestamp = col_skip()))
 
@@ -1361,7 +1361,7 @@ redcap_subset_3 <- redcap %>%
                          dd_pain_3_day4, dd_pain_3_day5, na.rm = TRUE)) %>%
   slice_head() %>%
   ungroup() %>%
-  select(1, 361) 
+  select(1, 333) 
   
 redcap <- redcap %>%
   left_join(
@@ -1391,7 +1391,7 @@ redcap_subset_4 <- redcap %>%
                                dd_bleeding_m_h_day5, na.rm = TRUE)) %>%
   slice_head() %>%
   ungroup() %>%
-  select(1, 362) 
+  select(1, 334) 
 
 redcap <- redcap %>%
   left_join(
@@ -1421,7 +1421,7 @@ redcap_subset_5 <- redcap %>%
                                   dd_bleeding_day5, na.rm = TRUE)) %>%
   slice_head() %>%
   ungroup() %>%
-  select(1, 363) 
+  select(1, 335) 
 
 redcap <- redcap %>%
   left_join(
@@ -1721,9 +1721,12 @@ read_docx() %>%
   print(target = "Tables/VBT_Predictive_Factors_Table4.docx")
 
     
+###################################
+##Table 5: Psycho-social Profiles##
+###################################    
     
-    
-    
+#recode variables 
+
     
     
     
