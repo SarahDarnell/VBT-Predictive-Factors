@@ -1,5 +1,5 @@
 #VBT Predictive Factors ~ part 1
-#Written by Sarah Darnell, last modified 9.4.25
+#Written by Sarah Darnell, last modified 9.5.25
 
 library(readr)
 library(dplyr)
@@ -1726,10 +1726,370 @@ read_docx() %>%
 ###################################    
     
 #recode variables 
+#promis physical function
+redcap <- redcap %>%
+  mutate(promis_pf_sum = promis_pf_1 + promis_pf_2 + promis_pf_3 + promis_pf_4)
+    
+#create lookup table of t-scores and SE from promis manual
+promis_pf_lookup <- tibble(
+  summed_score = 4:20,
+  t_score = c(22.5, 26.6, 28.9, 30.5, 31.9, 33.2, 34.4, 35.6, 36.7, 
+              37.9, 39.2, 40.5, 41.9, 43.5, 45.5, 48.3, 57.0),
+  se = c(4.0, 2.8, 2.5, 2.4, 2.3, 2.3, 2.3, 2.3, 2.3, 
+         2.3, 2.4, 2.4, 2.5, 2.6, 2.8, 3.3, 6.6)
+)
 
+#create new variables with t scores and SE 
+redcap <- redcap %>%
+  left_join(promis_pf_lookup, by = c("promis_pf_sum" = "summed_score")) %>%
+  rename(
+    promis_pf_t_score = t_score,
+    promis_pf_se = se
+  ) 
+
+#promis anxiety
+redcap <- redcap %>%
+  mutate(promis_anx_sum = promis_anx_1 + promis_anx_2 + promis_anx_3 + promis_anx_4)
+
+#create lookup table of t-scores and SE from promis manual
+promis_anx_lookup <- tibble(
+  summed_score = 4:20,
+  t_score = c(40.3, 48.0, 51.2, 53.7, 55.8, 57.7, 59.5, 61.4, 63.4, 
+              65.3, 67.3, 69.3, 71.2, 73.3, 75.4, 77.9, 81.6),
+  se = c(6.1, 3.6, 3.1, 2.8, 2.7, 2.6, 2.6, 2.6, 2.6, 
+         2.7, 2.7, 2.7, 2.7, 2.7, 2.7, 2.9, 3.7)
+)
+
+#create new variables with t scores and SE 
+redcap <- redcap %>%
+  left_join(promis_anx_lookup, by = c("promis_anx_sum" = "summed_score")) %>%
+  rename(
+    promis_anx_t_score = t_score,
+    promis_anx_se = se
+  ) 
     
+#promis depression
+redcap <- redcap %>%
+  mutate(promis_dep_sum = promis_dep_1 + promis_dep_2 + promis_dep_3 + promis_dep_4)
+
+#create lookup table of t-scores and SE from promis manual
+promis_dep_lookup <- tibble(
+  summed_score = 4:20,
+  t_score = c(41.0, 49.0, 51.8, 53.9, 55.7, 57.3, 58.9, 60.5, 62.2, 
+              63.9, 65.7, 67.5, 69.4, 71.2, 73.3, 75.7, 79.4),
+  se = c(6.2, 3.2, 2.7, 2.4, 2.3, 2.3, 2.3, 2.3, 2.3, 2.3, 
+         2.3, 2.3, 2.3, 2.4, 2.4, 2.6, 2.6)
+)
+
+#create new variables with t scores and SE 
+redcap <- redcap %>%
+  left_join(promis_dep_lookup, by = c("promis_dep_sum" = "summed_score")) %>%
+  rename(
+    promis_dep_t_score = t_score,
+    promis_dep_se = se
+  )     
     
-    
-    
-    
-    
+#promis fatigue
+redcap <- redcap %>%
+  mutate(promis_fat_sum = promis_fat_1 + promis_fat_2 + promis_fat_3 + promis_fat_4)
+
+#create lookup table of t-scores and SE from promis manual
+promis_fat_lookup <- tibble(
+  summed_score = 4:20,
+  t_score = c(33.7, 39.7, 43.1, 46.0, 48.6, 51.0, 53.1, 55.1, 
+              57.0, 58.8, 60.7, 62.7, 64.6, 66.7, 69.0, 71.6, 75.8),
+  se = c(4.9, 3.1, 2.7, 2.6, 2.5, 2.5, 2.4, 2.4, 2.3, 2.3, 
+         2.3, 2.4, 2.4, 2.4, 2.5, 2.7, 3.9)
+)
+
+#create new variables with t scores and SE 
+redcap <- redcap %>%
+  left_join(promis_fat_lookup, by = c("promis_fat_sum" = "summed_score")) %>%
+  rename(
+    promis_fat_t_score = t_score,
+    promis_fat_se = se
+  )     
+
+#promis sleep disturbance
+#promis_sd_3 and promis_sd_4 need to be reverse scored
+redcap <- redcap %>%
+  mutate(promis_sd_3 = case_match(
+    promis_sd_3, 
+    5 ~ 1, 
+    4 ~ 2, 
+    3 ~ 3, 
+    2 ~ 4, 
+    1 ~ 5
+  ))
+
+redcap <- redcap %>%
+  mutate(promis_sd_4 = case_match(
+    promis_sd_4, 
+    5 ~ 1, 
+    4 ~ 2, 
+    3 ~ 3, 
+    2 ~ 4, 
+    1 ~ 5
+  ))
+
+redcap <- redcap %>%
+  mutate(promis_sd_sum = promis_sd_1 + promis_sd_2 + promis_sd_3 + promis_sd_4)
+
+#create lookup table of t-scores and SE from promis manual
+promis_sd_lookup <- tibble(
+  summed_score = 4:20,
+  t_score = c(32.0, 37.5, 41.1, 43.8, 46.2, 48.4, 50.5, 52.4, 
+              54.3, 56.1, 57.9, 59.8, 61.7, 63.8, 66.0, 68.8, 73.3),
+  se = c(5.2, 4.0, 3.7, 3.5, 3.5, 3.4, 3.4, 3.4, 3.4, 
+         3.4, 3.3, 3.3, 3.3, 3.4, 3.4, 3.7, 4.6)
+)
+
+#create new variables with t scores and SE 
+redcap <- redcap %>%
+  left_join(promis_sd_lookup, by = c("promis_sd_sum" = "summed_score")) %>%
+  rename(
+    promis_sd_t_score = t_score,
+    promis_sd_se = se
+  )     
+
+#promis social roles and activies
+redcap <- redcap %>%
+  mutate(promis_sr_sum = promis_sr_1 + promis_sr_2 + promis_sr_3 + promis_sr_4)
+
+#create lookup table of t-scores and SE from promis manual
+promis_sr_lookup <- tibble(
+  summed_score = 4:20,
+  t_score = c(27.5, 31.8, 34.0, 35.7, 37.3, 38.8, 40.5, 42.3, 
+              44.2, 46.2, 48.1, 50.0, 51.9, 53.7, 55.8, 58.3, 64.2),
+  se = c(4.1, 2.5, 2.3, 2.2, 2.1, 2.2, 2.3, 2.3, 2.3, 
+         2.3, 2.2, 2.2, 2.2, 2.3, 2.3, 2.7, 5.1)
+)
+
+#create new variables with t scores and SE 
+redcap <- redcap %>%
+  left_join(promis_sr_lookup, by = c("promis_sr_sum" = "summed_score")) %>%
+  rename(
+    promis_sr_t_score = t_score,
+    promis_sr_se = se
+  )   
+
+#promis pain interference
+redcap <- redcap %>%
+  mutate(promis_pi_sum = promis_pi_1 + promis_pi_2 + promis_pi_3 + promis_pi_4)
+
+#create lookup table of t-scores and SE from promis manual
+promis_pi_lookup <- tibble(
+  summed_score = 4:20,
+  t_score = c(41.6, 49.6, 52.0, 53.9, 55.6, 57.1, 58.5, 59.9, 
+              61.2, 62.5, 63.8, 65.2, 66.6, 68.0, 69.7, 71.6, 75.6),
+  se = c(6.1, 2.5, 2.0, 1.9, 1.9, 1.9, 1.8, 1.8, 1.8, 
+         1.8, 1.8, 1.8, 1.8, 1.8, 1.9, 2.1, 3.7)
+)
+
+#create new variables with t scores and SE 
+redcap <- redcap %>%
+  left_join(promis_pi_lookup, by = c("promis_pi_sum" = "summed_score")) %>%
+  rename(
+    promis_pi_t_score = t_score,
+    promis_pi_se = se
+  )  
+
+#promis cognitive function
+redcap <- redcap %>%
+  mutate(promis_cf_sum = promis_cf_1 + promis_cf_2)
+
+#create lookup table of t-scores and SE from promis manual
+promis_cf_lookup <- tibble(
+  summed_score = 2:10,
+  t_score = c(29.5, 34.4, 38.0, 41.2, 44.3, 47.3, 50.5, 54.7, 61.2),
+  se = c(6.4, 5.9, 5.7, 5.7, 5.8, 5.8, 5.7, 5.9, 6.9)
+)
+
+#create new variables with t scores and SE 
+redcap <- redcap %>%
+  left_join(promis_cf_lookup, by = c("promis_cf_sum" = "summed_score")) %>%
+  rename(
+    promis_cf_t_score = t_score,
+    promis_cf_se = se
+  )  
+
+#PROPr score for promis 29+2
+
+#calculate theta scores for all t scores
+
+redcap <- redcap %>%
+  mutate(theta_phys = (promis_pf_t_score - 50)/10) %>%
+  mutate(theta_dep = (promis_dep_t_score - 50)/10) %>%
+  mutate(theta_fat = (promis_fat_t_score - 50)/10) %>%
+  mutate(theta_slp = (promis_sd_t_score - 50)/10) %>%
+  mutate(theta_pain = (promis_pi_t_score - 50)/10) %>%
+  mutate(theta_cog = (promis_cf_t_score - 50)/10) %>%
+  mutate(theta_sr = (promis_sr_t_score - 50)/10)
+
+#use PROPr function from github to calculate scores
+source("R files/propr.maut.function.201709.R")
+
+redcap_propr <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  rowwise() %>%
+  mutate(
+    results = list(
+      propr.maut.function.201709(
+        c(theta_cog, theta_dep, theta_fat,
+          theta_pain, theta_phys, theta_slp, theta_sr)
+      )
+    ),
+    PROPr              = results$PROPr,
+    cognition_utility  = results$cognition,
+    depression_utility = results$depression,
+    fatigue_utility    = results$fatigue,
+    pain_utility       = results$pain,
+    physical_utility   = results$physical,
+    sleep_utility      = results$sleep,
+    social_utility     = results$social
+  ) %>%
+  select(-results) %>%   # drop the temporary list column
+  ungroup() %>%
+  select(1, 366:373)
+
+#merge PROPr and individual utility scores back into dataset
+redcap <- redcap %>%
+  left_join(
+    redcap_propr,
+    by = "record_id"
+  ) %>%
+  mutate(
+    PROPr = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                                PROPr, NA_real_)
+  ) %>%
+  mutate(
+    cognition_utility = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                               cognition_utility, NA_real_)
+  ) %>%
+  mutate(
+    depression_utility = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                                depression_utility, NA_real_)
+  ) %>%
+  mutate(
+    fatigue_utility = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                             fatigue_utility, NA_real_)
+  ) %>%
+  mutate(
+    pain_utility = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                          pain_utility, NA_real_)
+  ) %>%
+  mutate(
+    physical_utility = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                              physical_utility, NA_real_)
+  ) %>%
+  mutate(
+    sleep_utility = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                           sleep_utility, NA_real_)
+  ) %>%
+  mutate(
+    social_utility = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                            social_utility, NA_real_)
+  )
+
+
+#saving file
+write_csv(redcap, "Edited data files/redcap_post_table5.csv") 
+
+
+#prelim table 5
+redcap_table5 <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1")
+
+vars <- c("promis_pf_t_score", "promis_anx_t_score", "promis_dep_t_score", 
+          "promis_fat_t_score", "promis_sd_t_score", "promis_sr_t_score", 
+          "promis_pi_t_score", "promis_cf_t_score", "promis_average_pain", 
+          "PROPr", "cognition_utility", "depression_utility", "fatigue_utility",
+          "pain_utility", "physical_utility", "sleep_utility", "social_utility")
+
+#Creating summary table 4
+sum <- CreateTableOne(vars, data = redcap_table5, strata = "Group")
+
+sum_df <- as.data.frame(print(sum,
+                              nonnormal = vars,
+                              printToggle = FALSE,
+                              quote = FALSE,
+                              noSpaces = TRUE,
+                              showAllLevels = TRUE, 
+                              pValues = FALSE))
+
+#Creating table with comparisons for DYS and DYSB
+redcap_table5_p <- redcap_table5 %>%
+  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
+
+comp <- CreateTableOne(vars, data = redcap_table5_p, strata = "Group")
+
+comp_df <- as.data.frame(print(comp,
+                               nonnormal = vars,
+                               printToggle = FALSE,
+                               quote = FALSE,
+                               noSpaces = TRUE,
+                               showAllLevels = TRUE, 
+                               pValues = TRUE)) %>%
+  dplyr::select("p")
+
+#merge summary and comparison tables
+table5 <- cbind(sum_df, p_dys_dysb = comp_df$p )
+
+#reformat and save table
+#Step 1: save rownames as a column
+table5 <- data.frame(rowname = rownames(table5), table5, row.names = NULL)
+
+# Step 2: Create an empty output data frame
+restructured_df <- data.frame()
+
+# Step 3: Loop through rows and insert variable name before its levels
+current_var <- NA
+
+for (i in seq_len(nrow(table5))) {
+  row_label <- table5$rowname[i]
+  if (!startsWith(row_label, "  ")) {
+    # Continuous variable row — use as is
+    current_var <- row_label
+    new_row <- table5[i, ]
+    new_row$Variable <- current_var
+    restructured_df <- bind_rows(restructured_df, new_row)
+  } else {
+    # Categorical level — insert variable name row if not already added
+    if (!identical(tail(restructured_df$Variable, 1), current_var)) {
+      var_row <- table5[i, ]
+      var_row[2:ncol(var_row)] <- ""  # clear values
+      var_row$Variable <- current_var
+      restructured_df <- bind_rows(restructured_df, var_row)
+    }
+    level_row <- table5[i, ]
+    level_row$Variable <- ""
+    restructured_df <- bind_rows(restructured_df, level_row)
+  }
+}
+
+# Step 4: Drop original rowname and reorder
+restructured_df <- restructured_df[, c("Variable", setdiff(names(restructured_df), c("rowname", "Variable")))]
+
+
+#building flextable
+ft <- flextable(table5) %>%
+  bold(i = which(table5$Variable != ""), j = 1) %>%      # Bold variable rows
+  align(align = "left", part = "all") %>%                 # Align left
+  fontsize(size = 9, part = "all") %>%                    # Reduce font size
+  set_table_properties(layout = "fixed", width = 1) %>%   # Fixed width layout
+  width(j = 1, width = 2.25) %>%                          # Widen first column for variable names
+  width(j = 2:ncol(table5), width = 1.25) %>%            # Narrow group columns
+  theme_vanilla()
+
+read_docx() %>%
+  body_add_flextable(ft) %>%
+  print(target = "Tables/VBT_Predictive_Factors_Table5.docx")
+
+
+
+
+
+
+
+
+
