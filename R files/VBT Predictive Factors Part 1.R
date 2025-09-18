@@ -2043,21 +2043,88 @@ redcap <- redcap %>%
   mutate(pss_sum = pss10_1 + pss10_2 + pss10_3 + pss10_4 + pss10_5 +
            pss10_6 + pss10_7 + pss10_8 + pss10_9 + pss10_10)
 
+#GSRS summed score 
+redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(
+    gsrs_bl = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                     gsrs_bl[redcap_event_name == "consent_ids_arm_1"][1],
+                         NA
+    )
+  ) %>%
+  ungroup()
 
+#icsi summed score 
+redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(
+    icsi_bl = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                     icsi_bl[redcap_event_name == "consent_ids_arm_1"][1],
+                     NA
+    )
+  ) %>%
+  ungroup()
 
+#gupi summed score 
+redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(
+    gupi_bl = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                     gupi_bl[redcap_event_name == "consent_ids_arm_1"][1],
+                     NA
+    )
+  ) %>%
+  ungroup()
 
+#promis belly pain
+redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(
+    belly_pain_bl = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                           belly_pain_bl[redcap_event_name == "consent_ids_arm_1"][1],
+                     NA
+    )
+  ) %>%
+  ungroup()
+#create lookup table of t-scores and SE from promis manual
+promis_belly_lookup <- tibble(
+  summed_score = 2:25,
+  t_score = c(33.9, 42.2, 48.3, 54.0, 0.00, 43.3, 47.0, 49.9, 52.3, 54.4, 56.5, 
+              58.4, 60.2, 61.9, 63.5, 65.0, 66.6, 68.1, 69.6, 71.1, 72.8, 74.7, 
+              76.8, 80.0),
+  se = c(6.2, 5.9, 5.6, 5.5, 0.0, 3.8, 3.3, 3.1, 3.0, 3.0, 3.0, 2.9, 2.8, 2.8, 
+         2.8, 2.8, 2.8, 2.7, 2.7, 2.8, 2.8, 3.0, 3.1, 3.7)
+)
+#create new variables with t scores and SE 
+redcap <- redcap %>%
+  left_join(promis_belly_lookup, by = c("belly_pain_bl" = "summed_score")) %>%
+  rename(
+    promis_belly_t_score = t_score,
+    promis_belly_se = se
+  ) 
+#calculate t score and se for sum of 6 (dependent response to question 1)
+#load in dataset that contains responses for [promis_gisx78], and merge
+redcap_sup_vars <- read_csv("Raw files/EH22236CRAMPP2-VBTPredictiveFactors_DATA_2025-09-18_1412.csv", 
+                            col_types = cols(redcap_event_name = col_skip()))
 
+redcap <- redcap %>%
+  left_join(redcap_sup_vars, by = "record_id") %>%
+  mutate(promis_gisx78 = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                                promis_gisx78, NA))
+#t score and se
+redcap <- redcap %>%
+  mutate(promis_belly_t_score = case_when(
+    promis_belly_t_score == 0.00 & promis_gisx78 == 1 ~ 58.6, 
+    promis_belly_t_score == 0.00 & promis_gisx78 > 1 ~ 39.3, 
+    TRUE ~ promis_belly_t_score
+  ))
 
-
-
-
-
-
-
-
-
-
-
+redcap <- redcap %>%
+  mutate(promis_belly_se = case_when(
+    promis_belly_se == 0.0 & promis_gisx78 == 1 ~ 5.3, 
+    promis_belly_se == 0.0 & promis_gisx78 > 1 ~ 4.4, 
+    TRUE ~ promis_belly_se
+  ))
 
 
 #saving file
