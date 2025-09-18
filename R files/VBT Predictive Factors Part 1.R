@@ -1991,9 +1991,113 @@ redcap <- redcap %>%
                             social_utility, NA_real_)
   )
 
+#promis positive affect
+redcap <- redcap %>%
+  mutate(promis_pos_sum = promis_swb_p_027r1 + promis_swb_p_025r1 + 
+           promis_swb_p_026r1 + promis_swb_p_029r1)
+
+#create lookup table of t-scores and SE from promis manual
+promis_pos_lookup <- tibble(
+  summed_score = 4:20,
+  t_score = c(22.0, 25.7, 28.0, 30.0, 31.8, 33.6, 35.4, 37.4, 39.5, 41.6, 
+              43.8, 46.2, 48.7, 51.2, 53.8, 56.8, 63.0),
+  se = c(3.6, 2.7, 2.5, 2.5, 2.4, 2.5, 2.5, 2.5, 2.5, 2.5, 2.6, 2.6, 
+         2.7, 2.6, 2.6, 3.0, 5.3)
+)
+
+#create new variables with t scores and SE 
+redcap <- redcap %>%
+  left_join(promis_pos_lookup, by = c("promis_pos_sum" = "summed_score")) %>%
+  rename(
+    promis_pos_t_score = t_score,
+    promis_pos_se = se
+  ) 
+
+#pain catastrophizing total and sub-scales
+#total
+redcap <- redcap %>%
+  mutate(`PCS-T` = pcs1a + pcs1b + pcs1c + pcs1d + pcs1e + pcs1f +
+         pcs1g + pcs1h + pcs1i + pcs1j + pcs1k + pcs1l + pcs1m)
+#rumination sub scale
+redcap <- redcap %>%
+  mutate(`PCS-R` = pcs1h + pcs1i + pcs1j + pcs1k)
+#magnification sub scale
+redcap <- redcap %>%
+  mutate(`PCS-M` = pcs1f + pcs1g + pcs1m)
+#helplessness sub scale
+redcap <- redcap %>%
+  mutate(`PCS-H` = pcs1a + pcs1b + pcs1c + pcs1d + pcs1e + pcs1l)
+
+#gss
+redcap <- redcap %>%
+  mutate(gss_sum = gss_balance + gss_mouth + gss_heart + 
+           gss_chemicals + gss_sound + gss_light)
+
+#aces
+redcap <- redcap %>%
+  mutate(aces_sum = swear + push + touch + loved + eat + divorced +
+           mother + drugs + depressed + prison)
+
+#perceived stress scale
+redcap <- redcap %>%
+  mutate(pss_sum = pss10_1 + pss10_2 + pss10_3 + pss10_4 + pss10_5 +
+           pss10_6 + pss10_7 + pss10_8 + pss10_9 + pss10_10)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #saving file
 write_csv(redcap, "Edited data files/redcap_post_table5.csv") 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #prelim table 5
@@ -2006,7 +2110,7 @@ vars <- c("promis_pf_t_score", "promis_anx_t_score", "promis_dep_t_score",
           "PROPr", "cognition_utility", "depression_utility", "fatigue_utility",
           "pain_utility", "physical_utility", "sleep_utility", "social_utility")
 
-#Creating summary table 4
+#Creating summary table 5
 sum <- CreateTableOne(vars, data = redcap_table5, strata = "Group")
 
 sum_df <- as.data.frame(print(sum,
