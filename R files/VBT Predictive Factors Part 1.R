@@ -2030,6 +2030,38 @@ redcap <- redcap %>%
 
 #gss
 redcap <- redcap %>%
+  mutate(gss_balance = case_when(
+    gss_balance == 1 ~ 1,
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(gss_balance) ~ 0
+  )) %>%
+  mutate(gss_mouth = case_when(
+    gss_mouth == 1 ~ 1,
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(gss_mouth) ~ 0
+  )) %>%
+  mutate(gss_heart = case_when(
+    gss_heart == 1 ~ 1,
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(gss_heart) ~ 0
+  )) %>%
+  mutate(gss_chemicals = case_when(
+    gss_chemicals == 1 ~ 1,
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(gss_chemicals) ~ 0
+  )) %>%
+  mutate(gss_sound = case_when(
+    gss_sound == 1 ~ 1,
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(gss_sound) ~ 0
+  )) %>%
+  mutate(gss_light = case_when(
+    gss_light == 1 ~ 1,
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(gss_light) ~ 0
+  ))
+
+redcap <- redcap %>%
   mutate(gss_sum = gss_balance + gss_mouth + gss_heart + 
            gss_chemicals + gss_sound + gss_light)
 
