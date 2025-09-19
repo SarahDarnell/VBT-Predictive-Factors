@@ -1,5 +1,5 @@
 #VBT Predictive Factors ~ part 1
-#Written by Sarah Darnell, last modified 9.5.25
+#Written by Sarah Darnell, last modified 9.19.25
 
 library(readr)
 library(dplyr)
@@ -2126,62 +2126,173 @@ redcap <- redcap %>%
     TRUE ~ promis_belly_se
   ))
 
+#time between finishing drinking and FS
+redcap <- redcap %>%
+  mutate(time_drinking_fs_mins = as.numeric(vbt_fs_time - vbt_time_drinking)/60)
+
+#time bwtn drinking and FU
+redcap <- redcap %>%
+  mutate(time_drinking_fu_mins = as.numeric(vbt_fu_time - vbt_time_drinking)/60)
+
+#time between drinking and mt
+redcap <- redcap %>%
+  mutate(time_drinking_mt_mins = as.numeric(vbt_mt_time - vbt_time_drinking)/60)
+
+#flag for negative times or total times that are over 150 mins (1 = true, 0 = false)
+redcap_flag <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  rowwise() %>%
+  mutate(
+    vbt_flag = any(c(time_drinking_fs_mins, time_drinking_fu_mins, time_drinking_mt_mins) < 0, na.rm = TRUE) |
+      any(c(time_drinking_fs_mins, time_drinking_fu_mins, time_drinking_mt_mins) > 150, na.rm = TRUE) |
+      all(is.na(c(time_drinking_fs_mins, time_drinking_fu_mins, time_drinking_mt_mins)))
+  ) %>%
+  ungroup()%>%
+  select(1, 390)
+
+redcap <- redcap %>%
+  left_join(
+    redcap_flag,
+    by = "record_id"
+  ) %>%
+  mutate(
+    vbt_flag = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                      vbt_flag, NA_real_)
+  )
+
+#vbt understanding
+redcap <- redcap %>%
+  mutate(understanding_yn = case_match(
+    understanding_yn, 
+    0 ~ "No",
+    1 ~ "Yes"
+  ))
 
 #saving file
 write_csv(redcap, "Edited data files/redcap_post_table5.csv") 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#prelim table 5
+#Defining vars for table 5, throwing out anyone flagged for weird VBT times
 redcap_table5 <- redcap %>%
-  filter(redcap_event_name == "virtual_assessment_arm_1")
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  filter(vbt_flag == 0) %>%
+  rename(
+    `Promis physical function` = promis_pf_t_score, 
+    `Promis anxiety` = promis_anx_t_score, 
+    `Promis depression` = promis_dep_t_score, 
+    `Promis fatigue` = promis_fat_t_score, 
+    `Promis sleep disturbance` = promis_sd_t_score, 
+    `Promis social roles` = promis_sr_t_score, 
+    `Promis pain interference` = promis_pi_t_score, 
+    `Promis cognitive function` = promis_cf_t_score, 
+    `Promis average pain` = promis_average_pain, 
+    `Promis PROPr` = PROPr, 
+    `Promis positive affect (ped)` = promis_pos_t_score, 
+    `Promis belly pain` = promis_belly_t_score, 
+    `GSS` = gss_sum, 
+    `MacArthur U.S. standing` = macarthur_ladder_us, 
+    `MacArthur community standing` = macarthur_ladder_community, 
+    `ACES` = aces_sum, 
+    `Perceived stress` = pss_sum, 
+    `GSRS` = gsrs_bl, 
+    `ICSI` = icsi_bl, 
+    `GUPI` = gupi_bl, 
+    `Time to FS (mins)` = time_drinking_fs_mins, 
+    `Time to FU (mins)` = time_drinking_fu_mins, 
+    `Time to MT (mins)` = time_drinking_mt_mins, 
+    `FS bladder urgency (VAS)` = vbt_fs_urgency, 
+    `FS bladder pain (VAS)` = vbt_fs_pain, 
+    `FU bladder urgency (VAS)` = vbt_fu_urgency, 
+    `FU bladder pain (VAS)` = vbt_fu_pain, 
+    `MT bladder urgency (VAS)` = vbt_mt_urgency, 
+    `MT bladder pain (VAS)` = vbt_mt_pain, 
+    `MT sharp pain (VAS)` = vbt_sharp, 
+    `MT pressing pain (VAS)` = vbt_pressing, 
+    `Understanding of bladder task` = understanding_yn, 
+    `Focus during bladder task (VAS)` = understanding_focus
+  )
 
-vars <- c("promis_pf_t_score", "promis_anx_t_score", "promis_dep_t_score", 
-          "promis_fat_t_score", "promis_sd_t_score", "promis_sr_t_score", 
-          "promis_pi_t_score", "promis_cf_t_score", "promis_average_pain", 
-          "PROPr", "cognition_utility", "depression_utility", "fatigue_utility",
-          "pain_utility", "physical_utility", "sleep_utility", "social_utility")
+vars <- c("Promis physical function", 
+          "Promis anxiety", 
+          "Promis depression", 
+          "Promis fatigue", 
+          "Promis sleep disturbance", 
+          "Promis social roles", 
+          "Promis pain interference", 
+          "Promis cognitive function", 
+          "Promis average pain", 
+          "Promis PROPr", 
+          "Promis positive affect (ped)", 
+          "Promis belly pain", 
+          "PCS-T", 
+          "PCS-R", 
+          "PCS-M", 
+          "PCS-H", 
+          "GSS", 
+          "MacArthur U.S. standing", 
+          "MacArthur community standing", 
+          "ACES",
+          "Perceived stress",
+          "GSRS",
+          "ICSI",
+          "GUPI",
+          "Time to FS (mins)",
+          "Time to FU (mins)",
+          "Time to MT (mins)",
+          "FS bladder urgency (VAS)",
+          "FS bladder pain (VAS)",
+          "FU bladder urgency (VAS)",
+          "FU bladder pain (VAS)",
+          "MT bladder urgency (VAS)",
+          "MT bladder pain (VAS)", 
+          "MT sharp pain (VAS)",
+          "MT pressing pain (VAS)",
+          "Understanding of bladder task",
+          "Focus during bladder task (VAS)"
+          )
+
+nonnormal_vars <- c("Promis physical function", 
+                    "Promis anxiety", 
+                    "Promis depression", 
+                    "Promis fatigue", 
+                    "Promis sleep disturbance", 
+                    "Promis social roles", 
+                    "Promis pain interference", 
+                    "Promis cognitive function", 
+                    "Promis average pain", 
+                    "Promis PROPr", 
+                    "Promis positive affect (ped)", 
+                    "Promis belly pain", 
+                    "PCS-T", 
+                    "PCS-R", 
+                    "PCS-M", 
+                    "PCS-H", 
+                    "GSS", 
+                    "MacArthur U.S. standing", 
+                    "MacArthur community standing", 
+                    "ACES",
+                    "Perceived stress",
+                    "GSRS",
+                    "ICSI",
+                    "GUPI",
+                    "Time to FS (mins)",
+                    "Time to FU (mins)",
+                    "Time to MT (mins)",
+                    "FS bladder urgency (VAS)",
+                    "FS bladder pain (VAS)",
+                    "FU bladder urgency (VAS)",
+                    "FU bladder pain (VAS)",
+                    "MT bladder urgency (VAS)",
+                    "MT bladder pain (VAS)", 
+                    "MT sharp pain (VAS)",
+                    "MT pressing pain (VAS)",
+                    "Focus during bladder task (VAS)"
+                    )
 
 #Creating summary table 5
 sum <- CreateTableOne(vars, data = redcap_table5, strata = "Group")
 
 sum_df <- as.data.frame(print(sum,
-                              nonnormal = vars,
+                              nonnormal = nonnormal_vars,
                               printToggle = FALSE,
                               quote = FALSE,
                               noSpaces = TRUE,
