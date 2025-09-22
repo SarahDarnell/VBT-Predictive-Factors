@@ -1,73 +1,187 @@
 #VBT Predictive Factors Sub-analyses - MPA projects for ZFK and KJ
-##Written by Sarah Darnell, last modified 9.18.25
+##Written by Sarah Darnell, last modified 9.22.25
 
 library(readr)
 library(dplyr)
-library(purrr)
-library(FSA)
+library(ggplot2)
+library(rstatix)
+library(coin)
+library(tidyr)
+library(flextable)
+library(officer)
 
 #set working directory
 setwd("~/Sarah work stuff/2025 Data Projects/VBT Predictive Factors CRAMPP2")
 
 #load latest version of dataset
 
-##########################################################################
-##ZFK project - THC usage and correlations to promis 29+2 and pain at FU##
-##########################################################################
-
-##kruskal-Wallis test for group comparisons of vars
-
 #pull out only VBT vars
 redcap_subset <- redcap %>%
   filter(redcap_event_name == "virtual_assessment_arm_1")
 
-#define vars
-vars <- c("promis_pf_t_score", "promis_anx_t_score", "promis_dep_t_score", 
-          "promis_fat_t_score", "promis_sd_t_score", "promis_sr_t_score", 
-          "promis_pi_t_score", "promis_cf_t_score", "promis_average_pain", 
-          "PROPr", "vbt_fu_pain")
+###############################################################################
+##ZFK project - THC usage and correlations to anx, dep, sleep, and pain at FU##
+###############################################################################
 
-kw <- lapply(vars, function(var) {
-  formula <- as.formula(paste(var, "~Group"))
-  # Check if variable has enough data to run test
-  temp <- redcap_subset[, c(var, "Group")]
+#define vars
+vars <- c("promis_anx_t_score", "promis_dep_t_score", "promis_sd_t_score",
+          "vbt_fu_pain", "mh23")
+
+#visualize vars for normality, change vars and uncomment to view
+#ggplot(redcap_subset, aes(mh23)) + geom_histogram()
+
+##Mann-Whitney test for correlation between THC usage and vars
+
+#convert THC variable to a factor
+redcap_subset$ms_thc <- factor(redcap_subset$ms_thc, levels = c("No", "Yes"))
+
+#table with medians stratified by THC usage for vars
+thc_table <- redcap_subset %>%
+  select(all_of(vars), ms_thc) %>%
+  pivot_longer(cols = -ms_thc, names_to = "Item", values_to = "Value") %>% 
+  group_by(ms_thc, Item) %>%
+  dplyr::summarize(`Median [IQR]` = sprintf("%.1f [%.1f-%.1f]", 
+                                            median(Value, na.rm = TRUE), 
+                                            quantile(Value, 0.25, na.rm = TRUE),
+                                            quantile(Value, 0.75, na.rm = TRUE)),
+                   .groups = "drop") %>%
+  pivot_wider(names_from = ms_thc, values_from = `Median [IQR]`) 
+
+#Mann-Whitney test
+mw <- lapply(vars, function(var) {
+  temp <- redcap_subset[, c(var, "ms_thc")]
   temp <- temp[complete.cases(temp), ]  # remove NAs
   
-  if (length(unique(temp$Group)) < 2 || length(unique(temp[[var]])) < 2) {
-    return(NULL)  # skip this variable
+  # Only run if exactly 2 groups and variable has enough unique values
+  if (length(unique(temp$ms_thc)) != 2 || length(unique(temp[[var]])) < 2) {
+    return(NULL)
   }
-  test_result <- kruskal.test(formula, data = temp)
+  
+  test_result <- wilcox.test(as.formula(paste(var, "~ ms_thc")), data = temp)
+  
+  # Compute rank-biserial correlation effect size
+  eff <- temp %>%
+    wilcox_effsize(as.formula(paste(var, "~ ms_thc")), ci = TRUE)
   
   data.frame(
-    Variable = var, 
-    Chi_Square = test_result$statistic, 
-    df = test_result$parameter, 
-    p_value = test_result$p.value, 
+    Variable = var,
+    W = test_result$statistic,
+    p_value = test_result$p.value,
+    Effect_Size = eff$effsize,
     stringsAsFactors = FALSE
   )
 })
 
-kw_results <- do.call(rbind, kw) 
-kw_results <- kw_results %>%
-  mutate(p_value = round(p_value, 5)) %>%
-  select(-df)
+mw_results <- do.call(rbind, mw) %>%
+  select(-W)
 
-#Dunn’s test to determine which groups differ 
-dunn_results <- map(vars, function(var) {
-  temp <- redcap_subset[, c(var, "Group")] %>% na.omit()
-  
-  dunn <- dunnTest(as.formula(paste(var, "~ Group")), 
-                   data = temp, method = "bonferroni")
-  
-  dunn$res %>%
-    mutate(Variable = var) %>%
-    select(Variable, Comparison, Z = Z, P_unadj = P.unadj, P_adj = P.adj)
+#combine thc_table with mann-whitney results
+names(thc_table)[1] <- "Variable"
+
+thc_table_full <- left_join(thc_table, mw_results, by = "Variable")
+
+#reformat and save table
+ft <- flextable(thc_table_full) %>%
+  bold(i = which(thc_table_full$Variable != ""), j = 1) %>% # Bold variable rows
+  align(align = "left", part = "all") %>%                   # Align left
+  fontsize(size = 9, part = "all") %>%                      # Reduce font size
+  set_table_properties(layout = "fixed", width = 1) %>%     # Fixed width layout
+  width(j = 1, width = 2.25) %>%                            # Widen first column for variable names
+  width(j = 2:ncol(thc_table_full), width = 1.25) %>%       # Narrow group columns
+  theme_vanilla()
+
+read_docx() %>%
+  body_add_flextable(ft) %>%
+  print(target = "Tables/MPA/thc_table.docx")
+
+
+
+#######################################################################################
+##KJ project - SES and correlations anx, dep, race, ethnicity, gender, and pain at FU##
+#######################################################################################
+
+##Table with medians for continuous vars
+
+#define median vars for spearman
+median_vars <- c("promis_anx_t_score", "promis_dep_t_score", "vbt_fu_pain", "mh23")
+
+#create table
+table_median <- redcap_subset %>%
+  select(all_of(median_vars)) %>%
+  dplyr::summarize(across(everything(), ~ sprintf("%.1f [%.1f-%.1f]", 
+                                                  median(., na.rm = TRUE), 
+                                                  quantile(., 0.25, na.rm = TRUE),
+                                                  quantile(., 0.75, na.rm = TRUE)))) %>%
+  pivot_longer(cols = everything(), names_to = "Item", values_to = "Median [IQR]")
+
+#Spearman's test for MacArthurs Q1 - Standing in US
+Spearman_results <- lapply(median_vars, function(var) {
+  test_result <- cor.test(redcap_subset$macarthur_ladder_us, 
+                          redcap_subset[[var]], method = "spearman", exact = FALSE)
+  rho <- test_result$estimate
+  p_value <- test_result$p.value
+  data.frame(
+    Item = var,
+    U.S. = rho,
+    p_value = p_value, 
+    stringsAsFactors = FALSE
+  )
 })
 
-# Combine into one results table
-dunn_results <- bind_rows(dunn_results)
+Spearman_results_df <- do.call(rbind, Spearman_results) %>%
+  mutate(
+    p_value = ifelse(
+      p_value < 0.001,            # cap very small p-values
+      "<0.001",
+      format(round(p_value, 3),   # round to 3 decimal places
+             scientific = FALSE)
+    ))
+rownames(Spearman_results_df) <- NULL
 
-dunn_results <- dunn_results %>%
-  mutate(P_adj = ifelse(P_adj < 0.001, "<0.001", 
-                        format(round(P_adj, 4), nsmall = 4)))
+#Spearman's test for MacArthurs Q2 - Standing in community
+Spearman_results_2 <- lapply(median_vars, function(var) {
+  test_result <- cor.test(redcap_subset$macarthur_ladder_community, 
+                          redcap_subset[[var]], method = "spearman", exact = FALSE)
+  rho <- test_result$estimate
+  p_value <- test_result$p.value
+  data.frame(
+    Item = var,
+    Community = rho,
+    p_value = p_value, 
+    stringsAsFactors = FALSE
+  )
+})
+
+Spearman_results_df_2 <- do.call(rbind, Spearman_results_2) %>%
+  mutate(
+    p_value = ifelse(
+      p_value < 0.001,            # cap very small p-values
+      "<0.001",
+      format(round(p_value, 3),   # round to 3 decimal places
+             scientific = FALSE)
+    ))
+rownames(Spearman_results_df_2) <- NULL
+
+#combine Spearman's results
+spearman_results_full <- left_join(Spearman_results_df, Spearman_results_df_2, 
+                                   by = "Item")
+
+#combine median table with spearman's results
+SES_table_full <- left_join(table_median, spearman_results_full, by = "Item")
+
+
+#reformat and save table
+ft <- flextable(SES_table_full) %>%
+  bold(i = which(SES_table_full$Item != ""), j = 1) %>% # Bold variable rows
+  align(align = "left", part = "all") %>%                   # Align left
+  fontsize(size = 9, part = "all") %>%                      # Reduce font size
+  set_table_properties(layout = "fixed", width = 1) %>%     # Fixed width layout
+  width(j = 1, width = 2.25) %>%                            # Widen first column for variable names
+  width(j = 2:ncol(SES_table_full), width = 1.25) %>%       # Narrow group columns
+  theme_vanilla()
+
+read_docx() %>%
+  body_add_flextable(ft) %>%
+  print(target = "Tables/MPA/ses_table.docx")
+
 
