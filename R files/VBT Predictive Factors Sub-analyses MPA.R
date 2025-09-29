@@ -1,5 +1,5 @@
 #VBT Predictive Factors Sub-analyses - MPA projects for ZFK and KJ
-##Written by Sarah Darnell, last modified 9.22.25
+##Written by Sarah Darnell, last modified 9.29.25
 
 library(readr)
 library(dplyr)
@@ -40,10 +40,11 @@ thc_table <- redcap_subset %>%
   select(all_of(vars), ms_thc) %>%
   pivot_longer(cols = -ms_thc, names_to = "Item", values_to = "Value") %>% 
   group_by(ms_thc, Item) %>%
-  dplyr::summarize(`Median [IQR]` = sprintf("%.1f [%.1f-%.1f]", 
+  dplyr::summarize(`Median [IQR]` = sprintf("%.1f [%.1f-%.1f], n=%d", 
                                             median(Value, na.rm = TRUE), 
                                             quantile(Value, 0.25, na.rm = TRUE),
-                                            quantile(Value, 0.75, na.rm = TRUE)),
+                                            quantile(Value, 0.75, na.rm = TRUE),
+                                            sum(!is.na(Value))),
                    .groups = "drop") %>%
   pivot_wider(names_from = ms_thc, values_from = `Median [IQR]`) 
 
@@ -92,7 +93,7 @@ ft <- flextable(thc_table_full) %>%
 
 read_docx() %>%
   body_add_flextable(ft) %>%
-  print(target = "Tables/MPA/thc_table.docx")
+  print(target = "Tables/MPA/thc_table_n.docx")
 
 
 
@@ -108,10 +109,11 @@ median_vars <- c("promis_anx_t_score", "promis_dep_t_score", "vbt_fu_pain", "mh2
 #create table
 table_median <- redcap_subset %>%
   select(all_of(median_vars)) %>%
-  dplyr::summarize(across(everything(), ~ sprintf("%.1f [%.1f-%.1f]", 
+  dplyr::summarize(across(everything(), ~ sprintf("%.1f [%.1f-%.1f], n=%d", 
                                                   median(., na.rm = TRUE), 
                                                   quantile(., 0.25, na.rm = TRUE),
-                                                  quantile(., 0.75, na.rm = TRUE)))) %>%
+                                                  quantile(., 0.75, na.rm = TRUE),
+                                                  sum(!is.na(.))))) %>%
   pivot_longer(cols = everything(), names_to = "Item", values_to = "Median [IQR]")
 
 #Spearman's test for MacArthurs Q1 - Standing in US
@@ -182,6 +184,6 @@ ft <- flextable(SES_table_full) %>%
 
 read_docx() %>%
   body_add_flextable(ft) %>%
-  print(target = "Tables/MPA/ses_table.docx")
+  print(target = "Tables/MPA/ses_table_n.docx")
 
 
