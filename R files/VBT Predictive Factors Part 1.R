@@ -1,5 +1,5 @@
 #VBT Predictive Factors ~ part 1
-#Written by Sarah Darnell, last modified 9.19.25
+#Written by Sarah Darnell, last modified 9.29.25
 
 library(readr)
 library(dplyr)
@@ -7,6 +7,7 @@ library(tableone)
 library(flextable)
 library(officer)
 library(stringr)
+library(readxl)
 
 #set working directory
 setwd("~/Sarah work stuff/2025 Data Projects/VBT Predictive Factors CRAMPP2")
@@ -2399,10 +2400,109 @@ read_docx() %>%
   body_add_flextable(ft) %>%
   print(target = "Tables/VBT_Predictive_Factors_Table5.docx")
 
+###########################
+##Supplementary variables##
+###########################
+
+#load in VBT urine pan volume spreadsheet
+urine_volumes <- read_excel("Raw files/URINE SAMPLE MEASURES_09.25.25.xlsx")
+
+#merge with larger dataset
+redcap <- redcap %>%
+  left_join(urine_volumes, by = "record_id") %>%
+  mutate(bl_urine_ml = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                      bl_urine_ml, NA))
+
+#saving file
+write_csv(redcap, "Edited data files/redcap_post_supplementary_vars.csv") 
+
+#defining vars for urine measures table, throwing out anyone flagged
+#for weird VBT times
+redcap_table_urine <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  filter(vbt_flag == 0) %>%
+  rename(`Urine Volume (ml)` = bl_urine_ml)
+
+vars <- "Urine Volume (ml)"
+
+#creating table of urine volumes
+sum <- CreateTableOne(vars, data = redcap_table_urine, strata = "Group")
+
+sum_df <- as.data.frame(print(sum,
+                              nonnormal = vars,
+                              printToggle = FALSE,
+                              quote = FALSE,
+                              noSpaces = TRUE,
+                              showAllLevels = TRUE, 
+                              pValues = FALSE))
+
+#Creating table with comparisons for DYS and DYSB
+redcap_table_urine_p <- redcap_table_urine %>%
+  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
+
+comp <- CreateTableOne(vars, data = redcap_table_urine_p, strata = "Group")
+
+comp_df <- as.data.frame(print(comp,
+                               nonnormal = vars,
+                               printToggle = FALSE,
+                               quote = FALSE,
+                               noSpaces = TRUE,
+                               showAllLevels = TRUE, 
+                               pValues = TRUE)) %>%
+  dplyr::select("p")
+
+#merge summary and comparison tables
+table_urine <- cbind(sum_df, p_dys_dysb = comp_df$p )
+
+#reformat and save table
+#Step 1: save rownames as a column
+table_urine <- data.frame(rowname = rownames(table_urine), table_urine, row.names = NULL)
+
+# Step 2: Create an empty output data frame
+restructured_df <- data.frame()
+
+# Step 3: Loop through rows and insert variable name before its levels
+current_var <- NA
+
+for (i in seq_len(nrow(table_urine))) {
+  row_label <- table_urine$rowname[i]
+  if (!startsWith(row_label, "  ")) {
+    # Continuous variable row — use as is
+    current_var <- row_label
+    new_row <- table_urine[i, ]
+    new_row$Variable <- current_var
+    restructured_df <- bind_rows(restructured_df, new_row)
+  } else {
+    # Categorical level — insert variable name row if not already added
+    if (!identical(tail(restructured_df$Variable, 1), current_var)) {
+      var_row <- table_urine[i, ]
+      var_row[2:ncol(var_row)] <- ""  # clear values
+      var_row$Variable <- current_var
+      restructured_df <- bind_rows(restructured_df, var_row)
+    }
+    level_row <- table_urine[i, ]
+    level_row$Variable <- ""
+    restructured_df <- bind_rows(restructured_df, level_row)
+  }
+}
+
+# Step 4: Drop original rowname and reorder
+restructured_df <- restructured_df[, c("Variable", setdiff(names(restructured_df), c("rowname", "Variable")))]
 
 
+#building flextable
+ft <- flextable(table_urine) %>%
+  bold(i = which(table_urine$Variable != ""), j = 1) %>%      # Bold variable rows
+  align(align = "left", part = "all") %>%                 # Align left
+  fontsize(size = 9, part = "all") %>%                    # Reduce font size
+  set_table_properties(layout = "fixed", width = 1) %>%   # Fixed width layout
+  width(j = 1, width = 2.25) %>%                          # Widen first column for variable names
+  width(j = 2:ncol(table_urine), width = 1.25) %>%            # Narrow group columns
+  theme_vanilla()
 
-
+read_docx() %>%
+  body_add_flextable(ft) %>%
+  print(target = "Tables/VBT_Predictive_Factors_Table_Urine.docx")
 
 
 
