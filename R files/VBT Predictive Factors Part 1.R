@@ -1,5 +1,5 @@
 #VBT Predictive Factors ~ part 1
-#Written by Sarah Darnell, last modified 9.29.25
+#Written by Sarah Darnell, last modified 10.6.25
 
 library(readr)
 library(dplyr)
@@ -2505,5 +2505,48 @@ read_docx() %>%
   print(target = "Tables/VBT_Predictive_Factors_Table_Urine.docx")
 
 
+#####################################
+##FDR corrections for key variables##
+#####################################
 
+#Defining vars for FDR correction, throwing out anyone flagged for weird VBT times
+redcap_table_fdr <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  filter(vbt_flag == 0) %>%
+  rename(GSRS = gsrs_bl, 
+         ICSI = icsi_bl, 
+         GUPI = gupi_bl)
+
+vars <- c("GSRS",
+          "ICSI",
+          "GUPI")
+
+#compute p values for FDR correction
+redcap_table_fdr_p <- redcap_table_fdr %>%
+  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
+
+comp <- CreateTableOne(vars, data = redcap_table_fdr_p, strata = "Group", test = TRUE)
+
+comp_df_p <- as.data.frame(print(comp,
+                               nonnormal = vars,
+                               printToggle = FALSE,
+                               quote = FALSE,
+                               noSpaces = TRUE,
+                               showAllLevels = TRUE, 
+                               pValues = TRUE)) %>%
+  dplyr::select("p")
+
+# Convert to numeric (some might be "<0.001" text)
+comp_df_p <- comp_df_p %>%
+  dplyr::mutate(
+    p = as.numeric(gsub("<", "", p)),
+    FDR_p = p.adjust(p, method = "fdr")
+  )
+
+#building flextable
+ft <- flextable(comp_df_p) 
+
+read_docx() %>%
+  body_add_flextable(ft) %>%
+  print(target = "Tables/VBT_Predictive_Factors_Table_FDR.docx")
 
