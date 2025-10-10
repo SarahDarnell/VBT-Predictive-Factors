@@ -1,5 +1,5 @@
 #VBT Predictive Factors Sub-analyses - MPA projects for ZFK and KJ
-##Written by Sarah Darnell, last modified 9.29.25
+##Written by Sarah Darnell, last modified 10.10.25
 
 library(readr)
 library(dplyr)
@@ -9,6 +9,7 @@ library(coin)
 library(tidyr)
 library(flextable)
 library(officer)
+library(patchwork)
 
 #set working directory
 setwd("~/Sarah work stuff/2025 Data Projects/VBT Predictive Factors CRAMPP2")
@@ -95,7 +96,37 @@ read_docx() %>%
   body_add_flextable(ft) %>%
   print(target = "Tables/MPA/thc_table_n.docx")
 
+#box plot of depression across THC usage
+dep_box_plot <- ggplot(redcap_subset, aes(x = ms_thc, y = promis_dep_t_score, fill = ms_thc)) +
+  geom_boxplot(outlier.shape = 21, outlier.size = 2, alpha = 0.8) +
+  theme_bw(base_size = 14) +
+  theme(
+    legend.position = "none",
+    panel.grid.major.x = element_blank()
+  ) +
+  labs(
+    y = "Depression t-score",
+    x = "THC usage"
+  ) +
+  scale_fill_brewer(palette = "Set2")
 
+ggsave("plots/dep_box_plot.png", plot = dep_box_plot)
+
+#box plot of anxiety across THC usage
+anx_box_plot<- ggplot(redcap_subset, aes(x = ms_thc, y = promis_anx_t_score, fill = ms_thc)) +
+  geom_boxplot(outlier.shape = 21, outlier.size = 2, alpha = 0.8) +
+  theme_bw(base_size = 14) +
+  theme(
+    legend.position = "none",
+    panel.grid.major.x = element_blank()
+  ) +
+  labs(
+    y = "Anxiety t-score",
+    x = "THC usage"
+  ) +
+  scale_fill_brewer(palette = "Set2")
+
+ggsave("plots/anx_box_plot.png", plot = anx_box_plot)
 
 #######################################################################################
 ##KJ project - SES and correlations anx, dep, race, ethnicity, gender, and pain at FU##
@@ -185,5 +216,59 @@ ft <- flextable(SES_table_full) %>%
 read_docx() %>%
   body_add_flextable(ft) %>%
   print(target = "Tables/MPA/ses_table_n.docx")
+
+#scatter plot of US standing and anxiety
+anx_US_plot <- ggplot(redcap_subset, aes(x = macarthur_ladder_us, y = promis_anx_t_score)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
+  labs(x = "SSS in U.S. (1–10)", y = "Anxiety t-score") +
+  theme_minimal()
+
+#scatter plot of community standing and anxiety
+anx_comm_plot <- ggplot(redcap_subset, aes(x = macarthur_ladder_community, y = promis_anx_t_score)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "grey") +
+  labs(x = "SSS in community (1–10)", y = "Anxiety t-score") +
+  theme_minimal()
+
+#scatter plot of US standing and depression
+dep_US_plot <- ggplot(redcap_subset, aes(x = macarthur_ladder_us, y = promis_dep_t_score)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
+  labs(x = "SSS in U.S. (1–10)", y = "Depression t-score") +
+  theme_minimal()
+
+#scatter plot of community standing and depression
+dep_comm_plot <- ggplot(redcap_subset, aes(x = macarthur_ladder_community, y = promis_dep_t_score)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
+  labs(x = "SSS in community (1–10)", y = "Depression t-score") +
+  theme_minimal()
+
+#scatter plot of US standing and mh23
+mp_US_plot <- ggplot(redcap_subset, aes(x = macarthur_ladder_us, y = mh23)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
+  labs(x = "SSS in U.S. (1–10)", y = "Menstrual pain (VAS)") +
+  theme_minimal()
+
+#scatter plot of community standing and mh23
+mp_comm_plot <- ggplot(redcap_subset, aes(x = macarthur_ladder_community, y = mh23)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, color = "gray") +
+  labs(x = "SSS in community (1–10)", y = "Menstrual pain (VAS)") +
+  theme_minimal()
+
+#combine plots into grid
+grid_2x3 <- (anx_US_plot + dep_US_plot + mp_US_plot) /
+  (anx_comm_plot + dep_comm_plot + mp_comm_plot)
+
+ggsave("plots/ses_2x3_plot.png", plot = grid_2x3)
+
+grid_3x2 <- (anx_US_plot + anx_comm_plot) /
+  (dep_US_plot + dep_comm_plot) /
+  (mp_US_plot + mp_comm_plot)
+
+ggsave("plots/ses_3x2_plot.png", plot = grid_3x2)
 
 
