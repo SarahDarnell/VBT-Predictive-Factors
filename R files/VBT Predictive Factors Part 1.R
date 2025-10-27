@@ -1,5 +1,5 @@
 #VBT Predictive Factors ~ part 1
-#Written by Sarah Darnell, last modified 10.6.25
+#Written by Sarah Darnell, last modified 10.27.25
 
 library(readr)
 library(dplyr)
@@ -59,59 +59,59 @@ redcap <- redcap %>%
 redcap <- redcap %>%
   mutate(multi_gender = ifelse(rowSums(
     select(., mh_gender___1:mh_gender___8)) > 1, 1, 0)) %>%
-  mutate(mh_gender___1 = ifelse((mh_gender___1 == 1) &
+  mutate(mh_gender_1_revised = ifelse((mh_gender___1 == 1) &
                                (multi_gender != 1), 1, 0)) %>%
-  mutate(mh_gender___2 = ifelse((mh_gender___2 == 1) &
+  mutate(mh_gender_2_revised = ifelse((mh_gender___2 == 1) &
                                   (multi_gender != 1), 1, 0)) %>%
-  mutate(mh_gender___3 = ifelse((mh_gender___3 == 1) &
+  mutate(mh_gender_3_revised = ifelse((mh_gender___3 == 1) &
                                   (multi_gender != 1), 1, 0)) %>%
-  mutate(mh_gender___4 = ifelse((mh_gender___4 == 1) &
+  mutate(mh_gender_4_revised = ifelse((mh_gender___4 == 1) &
                                   (multi_gender != 1), 1, 0)) %>%
-  mutate(mh_gender___5 = ifelse((mh_gender___5 == 1) &
+  mutate(mh_gender_5_revised = ifelse((mh_gender___5 == 1) &
                                   (multi_gender != 1), 1, 0)) %>%
-  mutate(mh_gender___6 = ifelse((mh_gender___6 == 1) &
+  mutate(mh_gender_6_revised = ifelse((mh_gender___6 == 1) &
                                   (multi_gender != 1), 1, 0)) %>%
-  mutate(mh_gender___7 = ifelse((mh_gender___7 == 1) &
+  mutate(mh_gender_7_revised = ifelse((mh_gender___7 == 1) &
                                   (multi_gender != 1), 1, 0)) %>%
-  mutate(mh_gender___8 = ifelse((mh_gender___8 == 1) &
+  mutate(mh_gender_8_revised = ifelse((mh_gender___8 == 1) &
                                   (multi_gender != 1), 1, 0)) %>%
   mutate(Gender = case_when(
     multi_gender == 1 ~ "Multiple Genders", 
-    mh_gender___1 == 1 ~ "Woman", 
-    mh_gender___2 == 1 ~ "Man", 
-    mh_gender___3 == 1 ~ "Transgender Woman/Trans Femme", 
-    mh_gender___4 == 1 ~ "Transgender Man/Trans Masc", 
-    mh_gender___5 == 1 ~ "Nonbinary/Genderqueer/Gender Expansive",
-    mh_gender___6 == 1 ~ "Two-spirit",
-    mh_gender___7 == 1 | mh_gender___8 == 1 ~ "Unknown"
+    mh_gender_1_revised == 1 ~ "Woman", 
+    mh_gender_2_revised == 1 ~ "Man", 
+    mh_gender_3_revised == 1 ~ "Transgender Woman/Trans Femme", 
+    mh_gender_4_revised == 1 ~ "Transgender Man/Trans Masc", 
+    mh_gender_5_revised == 1 ~ "Nonbinary/Genderqueer/Gender Expansive",
+    mh_gender_6_revised == 1 ~ "Two-spirit",
+    mh_gender_7_revised == 1 | mh_gender_8_revised == 1 ~ "Unknown"
   ))
 #race
 redcap <- redcap %>%
   mutate(multi_race = ifelse(rowSums(
     select(., mh3_race___1:mh3_race___7)) > 1, 1, 0)) %>%
-  mutate(mh3_race___1 = ifelse((mh3_race___1 == 1) &
+  mutate(mh3_race_1_revised = ifelse((mh3_race___1 == 1) &
                                   (multi_race != 1), 1, 0)) %>%
-  mutate(mh3_race___2 = ifelse((mh3_race___2 == 1) &
+  mutate(mh3_race_2_revised = ifelse((mh3_race___2 == 1) &
                                   (multi_race != 1), 1, 0)) %>%
-  mutate(mh3_race___3 = ifelse((mh3_race___3 == 1) &
+  mutate(mh3_race_3_revised = ifelse((mh3_race___3 == 1) &
                                   (multi_race != 1), 1, 0)) %>%
-  mutate(mh3_race___4 = ifelse((mh3_race___4 == 1) &
+  mutate(mh3_race_4_revised = ifelse((mh3_race___4 == 1) &
                                   (multi_race != 1), 1, 0)) %>%
-  mutate(mh3_race___5 = ifelse((mh3_race___5 == 1) &
+  mutate(mh3_race_5_revised = ifelse((mh3_race___5 == 1) &
                                   (multi_race != 1), 1, 0)) %>%
-  mutate(mh3_race___6 = ifelse((mh3_race___6 == 1) &
+  mutate(mh3_race_6_revised = ifelse((mh3_race___6 == 1) &
                                   (multi_race != 1), 1, 0)) %>%
-  mutate(mh3_race___7 = ifelse((mh3_race___7 == 1) &
+  mutate(mh3_race_7_revised = ifelse((mh3_race___7 == 1) &
                                   (multi_race != 1), 1, 0)) %>%
   mutate(Race = case_when(
     multi_race == 1 ~ "Multiple Races", 
-    mh3_race___1 == 1 ~ "Other", 
-    mh3_race___2 == 1 ~ "Asian", 
-    mh3_race___3 == 1 ~ "Other", 
-    mh3_race___4 == 1 ~ "Black", 
-    mh3_race___5 == 1 ~ "White",
-    mh3_race___6 == 1 ~ "Unknown",
-    mh3_race___7 == 1 | mh_gender___8 == 1 ~ "Other"
+    mh3_race_1_revised == 1 ~ "Other", 
+    mh3_race_2_revised == 1 ~ "Asian", 
+    mh3_race_3_revised == 1 ~ "Other", 
+    mh3_race_4_revised == 1 ~ "Black", 
+    mh3_race_5_revised == 1 ~ "White",
+    mh3_race_6_revised == 1 ~ "Unknown",
+    mh3_race_7_revised == 1 ~ "Other"
   ))
 #ethnicity
 redcap <- redcap %>%
@@ -136,29 +136,29 @@ redcap <- redcap %>%
 redcap <- redcap %>%
   mutate(multi_employment = ifelse(rowSums(
     select(., mh6_employment___1:mh6_employment___7)) > 1, 1, 0)) %>%
-  mutate(mh6_employment___1 = ifelse((mh6_employment___1 == 1) &
+  mutate(mh6_employment_1_revised = ifelse((mh6_employment___1 == 1) &
                                  (multi_employment != 1), 1, 0)) %>%
-  mutate(mh6_employment___2 = ifelse((mh6_employment___2 == 1) &
+  mutate(mh6_employment_2_revised = ifelse((mh6_employment___2 == 1) &
                                  (multi_employment != 1), 1, 0)) %>%
-  mutate(mh6_employment___3 = ifelse((mh6_employment___3 == 1) &
+  mutate(mh6_employment_3_revised = ifelse((mh6_employment___3 == 1) &
                                  (multi_employment != 1), 1, 0)) %>%
-  mutate(mh6_employment___4 = ifelse((mh6_employment___4 == 1) &
+  mutate(mh6_employment_4_revised = ifelse((mh6_employment___4 == 1) &
                                  (multi_employment != 1), 1, 0)) %>%
-  mutate(mh6_employment___5 = ifelse((mh6_employment___5 == 1) &
+  mutate(mh6_employment_5_revised = ifelse((mh6_employment___5 == 1) &
                                  (multi_employment != 1), 1, 0)) %>%
-  mutate(mh6_employment___6 = ifelse((mh6_employment___6 == 1) &
+  mutate(mh6_employment_6_revised = ifelse((mh6_employment___6 == 1) &
                                  (multi_employment != 1), 1, 0)) %>%
-  mutate(mh6_employment___7 = ifelse((mh6_employment___7 == 1) &
+  mutate(mh6_employment_7_revised = ifelse((mh6_employment___7 == 1) &
                                  (multi_employment != 1), 1, 0)) %>%
   mutate(Employment = case_when(
     multi_employment == 1 ~ "Multiple Employment Statuses", 
-    mh6_employment___1 == 1 ~ "Work Full-Time", 
-    mh6_employment___2 == 1 ~ "Work Part-Time", 
-    mh6_employment___3 == 1 ~ "Homemaker", 
-    mh6_employment___4 == 1 ~ "Retired", 
-    mh6_employment___5 == 1 ~ "Disabled",
-    mh6_employment___6 == 1 ~ "Student",
-    mh6_employment___7 == 1 ~ "Unemployed"
+    mh6_employment_1_revised == 1 ~ "Work Full-Time", 
+    mh6_employment_2_revised == 1 ~ "Work Part-Time", 
+    mh6_employment_3_revised == 1 ~ "Homemaker", 
+    mh6_employment_4_revised == 1 ~ "Retired", 
+    mh6_employment_5_revised == 1 ~ "Disabled",
+    mh6_employment_6_revised == 1 ~ "Student",
+    mh6_employment_7_revised == 1 ~ "Unemployed"
   ))
 #Smoking
 redcap <- redcap %>%
@@ -1362,7 +1362,7 @@ redcap_subset_3 <- redcap %>%
                          dd_pain_3_day4, dd_pain_3_day5, na.rm = TRUE)) %>%
   slice_head() %>%
   ungroup() %>%
-  select(1, 333) 
+  select(1, 355) 
   
 redcap <- redcap %>%
   left_join(
@@ -1392,7 +1392,7 @@ redcap_subset_4 <- redcap %>%
                                dd_bleeding_m_h_day5, na.rm = TRUE)) %>%
   slice_head() %>%
   ungroup() %>%
-  select(1, 334) 
+  select(1, 356) 
 
 redcap <- redcap %>%
   left_join(
@@ -1422,7 +1422,7 @@ redcap_subset_5 <- redcap %>%
                                   dd_bleeding_day5, na.rm = TRUE)) %>%
   slice_head() %>%
   ungroup() %>%
-  select(1, 335) 
+  select(1, 357) 
 
 redcap <- redcap %>%
   left_join(
@@ -1951,7 +1951,7 @@ redcap_propr <- redcap %>%
   ) %>%
   select(-results) %>%   # drop the temporary list column
   ungroup() %>%
-  select(1, 366:373)
+  select(1, 388:395)
 
 #merge PROPr and individual utility scores back into dataset
 redcap <- redcap %>%
@@ -2181,7 +2181,7 @@ redcap_flag <- redcap %>%
       all(is.na(c(time_drinking_fs_mins, time_drinking_fu_mins, time_drinking_mt_mins)))
   ) %>%
   ungroup()%>%
-  select(1, 390)
+  select(1, 412)
 
 redcap <- redcap %>%
   left_join(

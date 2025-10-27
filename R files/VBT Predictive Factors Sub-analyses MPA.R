@@ -1,5 +1,5 @@
 #VBT Predictive Factors Sub-analyses - MPA projects for ZFK and KJ
-##Written by Sarah Darnell, last modified 10.10.25
+##Written by Sarah Darnell, last modified 10.27.25
 
 library(readr)
 library(dplyr)
@@ -15,6 +15,7 @@ library(patchwork)
 setwd("~/Sarah work stuff/2025 Data Projects/VBT Predictive Factors CRAMPP2")
 
 #load latest version of dataset
+redcap <- read_csv("Edited data files/redcap_post_supplementary_vars.csv")
 
 #pull out only VBT vars
 redcap_subset <- redcap %>%
@@ -29,7 +30,7 @@ vars <- c("promis_anx_t_score", "promis_dep_t_score", "promis_sd_t_score",
           "vbt_fu_pain", "mh23")
 
 #visualize vars for normality, change vars and uncomment to view
-#ggplot(redcap_subset, aes(mh23)) + geom_histogram()
+#ggplot(redcap_subset, aes(macarthur_ladder_us)) + geom_histogram()
 
 ##Mann-Whitney test for correlation between THC usage and vars
 
@@ -127,6 +128,150 @@ anx_box_plot<- ggplot(redcap_subset, aes(x = ms_thc, y = promis_anx_t_score, fil
   scale_fill_brewer(palette = "Set2")
 
 ggsave("plots/anx_box_plot.png", plot = anx_box_plot)
+
+##Additional changes for MPA conference##
+
+#Prepping vars
+#Education, regrouping to have 3 levels instead of 6
+redcap_subset$mh5_education <- as.factor(redcap_subset$mh5_education)
+
+redcap_subset <- redcap_subset %>%
+  mutate(`education_mpa` = case_when(
+    mh5_education == "Grade School" | 
+      mh5_education == "High School" | 
+      mh5_education == "Some College" 
+    ~ "Some college or less", 
+    mh5_education == "Associate's Degree" |
+      mh5_education == "Bachelor's Degree" 
+    ~ "College Degree", 
+    mh5_education == "Post-Graduate Degree" 
+    ~ "Post-Graduate Degree"
+  ))
+
+#Employment, regrouping to have 2 levels instead of 7
+redcap_subset <- redcap_subset %>%
+  mutate(multi_employment = ifelse(rowSums(
+    select(., mh6_employment___1:mh6_employment___7)) > 1, 1, 0)) %>%
+  mutate(mh6_employment_1_revised = ifelse((mh6_employment___1 == 1) &
+                                             (multi_employment != 1), 1, 0)) %>%
+  mutate(mh6_employment_2_revised = ifelse((mh6_employment___2 == 1) &
+                                             (multi_employment != 1), 1, 0)) %>%
+  mutate(mh6_employment_3_revised = ifelse((mh6_employment___3 == 1) &
+                                             (multi_employment != 1), 1, 0)) %>%
+  mutate(mh6_employment_4_revised = ifelse((mh6_employment___4 == 1) &
+                                             (multi_employment != 1), 1, 0)) %>%
+  mutate(mh6_employment_5_revised = ifelse((mh6_employment___5 == 1) &
+                                             (multi_employment != 1), 1, 0)) %>%
+  mutate(mh6_employment_6_revised = ifelse((mh6_employment___6 == 1) &
+                                             (multi_employment != 1), 1, 0)) %>%
+  mutate(mh6_employment_7_revised = ifelse((mh6_employment___7 == 1) &
+                                             (multi_employment != 1), 1, 0)) %>%
+  mutate(Employment_mpa = case_when(
+    multi_employment == 1 & (mh6_employment___1 == 1 | mh6_employment___2 == 1)
+    ~ "Employed", 
+    multi_employment == 1 & (mh6_employment___1 != 1 | mh6_employment___2 != 1)
+    ~ "Unemployed", 
+    mh6_employment_1_revised == 1 ~ "Employed", 
+    mh6_employment_2_revised == 1 ~ "Employed", 
+    mh6_employment_3_revised == 1 ~ "Unemployed", 
+    mh6_employment_4_revised == 1 ~ "Unemployed", 
+    mh6_employment_5_revised == 1 ~ "Unemployed",
+    mh6_employment_6_revised == 1 ~ "Unemployed",
+    mh6_employment_7_revised == 1 ~ "Unemployed"
+  ))
+
+#demo table, stratified by THC usage 
+demo_vars <- c("Age", 
+              "Race", 
+              "mh4_ethnicity", 
+              "education_mpa", 
+              "Employment_mpa", 
+              "mh_income",
+              "promis_anx_t_score",
+              "promis_dep_t_score",
+              "promis_sd_t_score",
+              "mh23",
+              "vbt_fu_pain"
+              )
+
+demo_factor_vars <- c("Race", 
+                      "mh4_ethnicity", 
+                      "education_mpa", 
+                      "Employment_mpa", 
+                      "mh_income"
+                      )
+
+demo_nonnormal_vars <- c("Age",
+                         "promis_anx_t_score",
+                         "promis_dep_t_score",
+                         "promis_sd_t_score",
+                         "mh23",
+                         "vbt_fu_pain"
+                          )
+
+
+demo_mpa_thc <- CreateTableOne(demo_vars, data = redcap_subset, 
+                               factorVars = demo_factor_vars, 
+                       strata = "ms_thc")
+
+demo_mpa_thc_df <- as.data.frame(print(demo_mpa_thc, 
+                               nonnormal = demo_nonnormal_vars,
+                               printToggle = FALSE,
+                               quote = FALSE,
+                               noSpaces = TRUE,
+                               showAllLevels = TRUE))
+
+
+#Step 1: save rownames as a column
+demo_mpa_thc_df <- data.frame(rowname = rownames(demo_mpa_thc_df), 
+                              demo_mpa_thc_df, row.names = NULL)
+
+# Step 2: Create an empty output data frame
+restructured_df <- data.frame()
+
+# Step 3: Loop through rows and insert variable name before its levels
+current_var <- NA
+
+for (i in seq_len(nrow(demo_mpa_thc_df))) {
+  row_label <- demo_mpa_thc_df$rowname[i]
+  if (!startsWith(row_label, "  ")) {
+    # Continuous variable row — use as is
+    current_var <- row_label
+    new_row <- demo_mpa_thc_df[i, ]
+    new_row$Variable <- current_var
+    restructured_df <- bind_rows(restructured_df, new_row)
+  } else {
+    # Categorical level — insert variable name row if not already added
+    if (!identical(tail(restructured_df$Variable, 1), current_var)) {
+      var_row <- demo_mpa_thc_df[i, ]
+      var_row[2:ncol(var_row)] <- ""  # clear values
+      var_row$Variable <- current_var
+      restructured_df <- bind_rows(restructured_df, var_row)
+    }
+    level_row <- demo_mpa_thc_df[i, ]
+    level_row$Variable <- ""
+    restructured_df <- bind_rows(restructured_df, level_row)
+  }
+}
+
+# Step 4: Drop original rowname and reorder
+restructured_df <- restructured_df[, c("Variable", setdiff(names(restructured_df), c("rowname", "Variable")))]
+
+
+#building flextable
+ft <- flextable(demo_mpa_thc_df) %>%
+  bold(i = which(demo_mpa_thc_df$Variable != ""), j = 1) %>%      # Bold variable rows
+  align(align = "left", part = "all") %>%                 # Align left
+  fontsize(size = 9, part = "all") %>%                    # Reduce font size
+  set_table_properties(layout = "fixed", width = 1) %>%   # Fixed width layout
+  width(j = 1, width = 2.25) %>%                          # Widen first column for variable names
+  width(j = 2:ncol(demo_mpa_thc_df), width = 1.25) %>%            # Narrow group columns
+  theme_vanilla()
+
+read_docx() %>%
+  body_add_flextable(ft) %>%
+  print(target = "Tables/MPA/thc_demographics.docx")
+
 
 #######################################################################################
 ##KJ project - SES and correlations anx, dep, race, ethnicity, gender, and pain at FU##
@@ -270,5 +415,83 @@ grid_3x2 <- (anx_US_plot + anx_comm_plot) /
   (mp_US_plot + mp_comm_plot)
 
 ggsave("plots/ses_3x2_plot.png", plot = grid_3x2)
+
+
+##Additional changes for MPA conference##
+
+#create low and high SSS variable
+redcap_subset <- redcap_subset %>%
+  mutate(sss_group = case_when(
+    macarthur_ladder_us < 6 ~ "Low SSS", 
+    macarthur_ladder_us > 5 ~ "High SSS"))
+
+#create demo table, stratified by SSS group (using same variables as thc project)
+
+demo_mpa_ses <- CreateTableOne(demo_vars, data = redcap_subset, 
+                               factorVars = demo_factor_vars, 
+                               strata = "sss_group")
+
+demo_mpa_ses_df <- as.data.frame(print(demo_mpa_ses, 
+                                       nonnormal = demo_nonnormal_vars,
+                                       printToggle = FALSE,
+                                       quote = FALSE,
+                                       noSpaces = TRUE,
+                                       showAllLevels = TRUE))
+
+
+#Step 1: save rownames as a column
+demo_mpa_ses_df <- data.frame(rowname = rownames(demo_mpa_ses_df), 
+                              demo_mpa_ses_df, row.names = NULL)
+
+# Step 2: Create an empty output data frame
+restructured_df <- data.frame()
+
+# Step 3: Loop through rows and insert variable name before its levels
+current_var <- NA
+
+for (i in seq_len(nrow(demo_mpa_ses_df))) {
+  row_label <- demo_mpa_ses_df$rowname[i]
+  if (!startsWith(row_label, "  ")) {
+    # Continuous variable row — use as is
+    current_var <- row_label
+    new_row <- demo_mpa_ses_df[i, ]
+    new_row$Variable <- current_var
+    restructured_df <- bind_rows(restructured_df, new_row)
+  } else {
+    # Categorical level — insert variable name row if not already added
+    if (!identical(tail(restructured_df$Variable, 1), current_var)) {
+      var_row <- demo_mpa_ses_df[i, ]
+      var_row[2:ncol(var_row)] <- ""  # clear values
+      var_row$Variable <- current_var
+      restructured_df <- bind_rows(restructured_df, var_row)
+    }
+    level_row <- demo_mpa_ses_df[i, ]
+    level_row$Variable <- ""
+    restructured_df <- bind_rows(restructured_df, level_row)
+  }
+}
+
+# Step 4: Drop original rowname and reorder
+restructured_df <- restructured_df[, c("Variable", setdiff(names(restructured_df), c("rowname", "Variable")))]
+
+
+#building flextable
+ft <- flextable(demo_mpa_ses_df) %>%
+  bold(i = which(demo_mpa_ses_df$Variable != ""), j = 1) %>%      # Bold variable rows
+  align(align = "left", part = "all") %>%                 # Align left
+  fontsize(size = 9, part = "all") %>%                    # Reduce font size
+  set_table_properties(layout = "fixed", width = 1) %>%   # Fixed width layout
+  width(j = 1, width = 2.25) %>%                          # Widen first column for variable names
+  width(j = 2:ncol(demo_mpa_ses_df), width = 1.25) %>%            # Narrow group columns
+  theme_vanilla()
+
+read_docx() %>%
+  body_add_flextable(ft) %>%
+  print(target = "Tables/MPA/ses_demographics.docx")
+
+
+
+
+
 
 
