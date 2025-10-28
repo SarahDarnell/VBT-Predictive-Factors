@@ -1,5 +1,5 @@
 #VBT Predictive Factors Sub-analyses - MPA projects for ZFK and KJ
-##Written by Sarah Darnell, last modified 10.27.25
+##Written by Sarah Darnell, last modified 10.28.25
 
 library(readr)
 library(dplyr)
@@ -272,6 +272,61 @@ read_docx() %>%
   body_add_flextable(ft) %>%
   print(target = "Tables/MPA/thc_demographics.docx")
 
+##Linear regression models
+#Set order levels for education
+redcap_subset$education_mpa <- factor(
+  redcap_subset$education_mpa,
+  levels = c("Some college or less",
+             "College Degree",
+             "Post-Graduate Degree")
+)
+
+#create 0/1 variable for hispanic ethnicity
+redcap_subset <- redcap_subset %>%
+  mutate(hispanic_mpa = case_when(
+    mh4_ethnicity == "Hispanic or Latino" ~ 1, 
+    mh4_ethnicity != "Hispanic or Latino" ~ 0
+  ))
+
+#Model #1: anxiety ~ White + Hispanic + Education  + THC use
+thc_model_1 <- lm(promis_anx_t_score ~ 
+                    mh3_race_5_revised + 
+                    hispanic_mpa +
+                    education_mpa +
+                    ms_thc, 
+                  data = redcap_subset)
+#print summary of model
+summary(thc_model_1)
+
+#Model #2: anxiety ~ Asian + Hispanic + Education  + THC use
+thc_model_2 <- lm(promis_anx_t_score ~ 
+                    mh3_race_2_revised + 
+                    hispanic_mpa +
+                    education_mpa +
+                    ms_thc, 
+                  data = redcap_subset)
+#print summary of model
+summary(thc_model_2)
+
+#Model #3: depression ~ White + Hispanic + Education  + THC use
+thc_model_3 <- lm(promis_dep_t_score ~ 
+                    mh3_race_5_revised + 
+                    hispanic_mpa +
+                    education_mpa +
+                    ms_thc, 
+                  data = redcap_subset)
+#print summary of model
+summary(thc_model_3)
+
+#Model #4: depression ~ Asian + Hispanic + Education  + THC use
+thc_model_4 <- lm(promis_dep_t_score ~ 
+                    mh3_race_2_revised + 
+                    hispanic_mpa +
+                    education_mpa +
+                    ms_thc, 
+                  data = redcap_subset)
+#print summary of model
+summary(thc_model_4)
 
 #######################################################################################
 ##KJ project - SES and correlations anx, dep, race, ethnicity, gender, and pain at FU##
@@ -489,9 +544,63 @@ read_docx() %>%
   body_add_flextable(ft) %>%
   print(target = "Tables/MPA/ses_demographics.docx")
 
+##Linear regression models
+#Set order levels for education and income
+redcap_subset$education_mpa <- factor(
+  redcap_subset$education_mpa,
+  levels = c("Some college or less",
+             "College Degree",
+             "Post-Graduate Degree")
+)
 
+redcap_subset$mh_income <- factor(
+  redcap_subset$mh_income,
+  levels = c("< $25,000",
+             "$25,000 - < $50,000",
+             "$50,000 - < $75,000",
+             "$75,000 - < $100,000",
+             "$100,000 - < $150,000",
+             "$150,000 or greater",
+             "Unknown")
+)
 
+#Model #1: anxiety ~ Black + Education + Income + SSS_US
+ses_model_1 <- lm(promis_anx_t_score ~ 
+                    mh3_race_4_revised + 
+                    education_mpa +
+                    mh_income + 
+                    macarthur_ladder_us, 
+                  data = redcap_subset)
+#print summary of model
+summary(ses_model_1)
 
+#Model #2: depression ~ Black + Education + Income + SSS_US
+ses_model_2 <- lm(promis_dep_t_score ~ 
+                    mh3_race_4_revised + 
+                    education_mpa +
+                    mh_income + 
+                    macarthur_ladder_us, 
+                  data = redcap_subset)
+#print summary of model
+summary(ses_model_2)
 
+#Model #3: Sleep disturbance ~ Black + Education + Income + SSS_US
+ses_model_3 <- lm(promis_sd_t_score ~ 
+                    mh3_race_4_revised + 
+                    education_mpa +
+                    mh_income + 
+                    macarthur_ladder_us, 
+                  data = redcap_subset)
+#print summary of model
+summary(ses_model_3)
 
+#Model #4: mh23 ~ Black + Education + Income + SSS_US
+ses_model_4 <- lm(mh23 ~ 
+                    mh3_race_4_revised + 
+                    education_mpa +
+                    mh_income + 
+                    macarthur_ladder_us, 
+                  data = redcap_subset)
+#print summary of model
+summary(ses_model_4)
 
