@@ -1,5 +1,5 @@
 #VBT Predictive Factors Sub-analyses - MPA projects for ZFK and KJ
-##Written by Sarah Darnell, last modified 10.28.25
+##Written by Sarah Darnell, last modified 10.30.25
 
 library(readr)
 library(dplyr)
@@ -15,6 +15,7 @@ library(patchwork)
 setwd("~/Sarah work stuff/2025 Data Projects/VBT Predictive Factors CRAMPP2")
 
 #load latest version of dataset
+#When making additional changes, use redcap_subset_MPA
 redcap <- read_csv("Edited data files/redcap_post_supplementary_vars.csv")
 
 #pull out only VBT vars
@@ -594,6 +595,22 @@ ses_model_3 <- lm(promis_sd_t_score ~
 #print summary of model
 summary(ses_model_3)
 
+#Model #3A: Sleep disturbance ~ SSS_US
+ses_model_3A <- lm(promis_sd_t_score ~ 
+                    macarthur_ladder_us, 
+                  data = redcap_subset)
+#print summary of model
+summary(ses_model_3A)
+
+#Model #3B: Sleep disturbance ~ Black + Education + Income
+ses_model_3B <- lm(promis_sd_t_score ~ 
+                    mh3_race_4_revised + 
+                    education_mpa +
+                    mh_income, 
+                  data = redcap_subset)
+#print summary of model
+summary(ses_model_3B)
+
 #Model #4: mh23 ~ Black + Education + Income + SSS_US
 ses_model_4 <- lm(mh23 ~ 
                     mh3_race_4_revised + 
@@ -603,4 +620,7 @@ ses_model_4 <- lm(mh23 ~
                   data = redcap_subset)
 #print summary of model
 summary(ses_model_4)
+
+#saving file with mpa specific changes
+write_csv(redcap_subset, "Edited data files/redcap_subset_MPA.csv")
 
