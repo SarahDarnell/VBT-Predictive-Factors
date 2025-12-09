@@ -1,5 +1,5 @@
 #VBT Predictive Factors ~ part 2 (graphs)
-#Written by Sarah Darnell, last modified 10.6.25
+#Written by Sarah Darnell, last modified 12.8.25
 
 library(readr)
 library(dplyr)
@@ -53,3 +53,32 @@ ggplot(redcap, aes(x = Group, y = gupi_bl)) +
   labs(
     y = "GUPI"
   )
+
+
+##############################################
+## Correlation matrices (GSRS, ICSI, GUPI ) ##
+##############################################
+
+#subset needed variables
+correlation_subset <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  select(record_id, vbt_fu_pain, bl_urine_ml, 
+         gupi_bl, icsi_bl, gsrs_bl)
+
+vars <- correlation_subset %>% select(vbt_fu_pain, bl_urine_ml, 
+                                      gupi_bl, icsi_bl, gsrs_bl)
+
+#spearman matrix
+spearman <- cor(vars, method = "spearman", use = "pairwise.complete.obs")
+
+#pearson matrix
+pearson <- cor(vars, method = "pearson", use = "pairwise.complete.obs")
+
+
+
+
+
+
+
+
+
