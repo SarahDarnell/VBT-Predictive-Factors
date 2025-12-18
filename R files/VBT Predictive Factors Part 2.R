@@ -1,5 +1,5 @@
 #VBT Predictive Factors ~ part 2 (graphs)
-#Written by Sarah Darnell, last modified 12.11.25
+#Written by Sarah Darnell, last modified 12.18.25
 
 library(readr)
 library(dplyr)
@@ -78,46 +78,218 @@ pearson <- cor(vars, method = "pearson", use = "pairwise.complete.obs")
 
 
 ###########################################
-## Regression Models (GSRS, ICSI, GUPI ) ##
+## Regression Models (GSRS, ICSI, GUPI) ##
 ###########################################
+
+#uncomment to save output - update date here and throughout ggplots 
+sink("Logs/12.18.25/regression_log.txt")
+
 
 #subset needed variables
 regression_subset <- redcap %>%
   filter(redcap_event_name == "virtual_assessment_arm_1") %>%
   select(record_id, vbt_fu_pain, bl_urine_ml, 
          vbt_fs_pain, vbt_mt_pain, mcgill_1,
-         mcgill_2, mcgill_3)
+         mcgill_2, mcgill_3, promis_anx_t_score, 
+         promis_dep_t_score, `PCS-T`, gsrs_bl, icsi_bl, gupi_bl)
 
-#Model #1: NMPP ~ FS pain + FU pain + MT pain + volume voided
-mcgill_1_model <- lm(mcgill_1 ~ 
+#Model #1: mcgill_1/2/3 ~ FS pain + FU pain + MT pain + volume voided
+
+mcgill_1_model_1 <- lm(mcgill_1 ~ 
                        vbt_fs_pain + 
                        vbt_fu_pain +
                        vbt_mt_pain +
                        bl_urine_ml, 
                   data = regression_subset)
-
 #print summary of model
-summary(mcgill_1_model)
+summary(mcgill_1_model_1)
 
-#Model #2: Painful urination ~ FS pain + FU pain + MT pain + volume voided
-mcgill_2_model <- lm(mcgill_2 ~ 
+mcgill_2_model_1 <- lm(mcgill_2 ~ 
                        vbt_fs_pain + 
                        vbt_fu_pain +
                        vbt_mt_pain +
                        bl_urine_ml, 
                      data = regression_subset)
-
 #print summary of model
-summary(mcgill_2_model)
+summary(mcgill_2_model_1)
 
-#Model #3: Painful bowel movements ~ FS pain + FU pain + MT pain + volume voided
-mcgill_3_model <- lm(mcgill_3 ~ 
+mcgill_3_model_1 <- lm(mcgill_3 ~ 
                        vbt_fs_pain + 
                        vbt_fu_pain +
                        vbt_mt_pain +
                        bl_urine_ml, 
                      data = regression_subset)
+#print summary of model
+summary(mcgill_3_model_1)
+
+#Model #2: mcgill_1/2/3 ~ anxiety, depression, PCS
+
+mcgill_1_model_2 <- lm(mcgill_1 ~ 
+                      promis_anx_t_score + 
+                      promis_dep_t_score +
+                      `PCS-T`, 
+                     data = regression_subset)
 
 #print summary of model
-summary(mcgill_3_model)
+summary(mcgill_1_model_2)
+
+mcgill_2_model_2 <- lm(mcgill_2 ~ 
+                         promis_anx_t_score + 
+                         promis_dep_t_score +
+                         `PCS-T`, 
+                       data = regression_subset)
+
+#print summary of model
+summary(mcgill_2_model_2)
+
+mcgill_3_model_2 <- lm(mcgill_3 ~ 
+                         promis_anx_t_score + 
+                         promis_dep_t_score +
+                         `PCS-T`, 
+                       data = regression_subset)
+
+#print summary of model
+summary(mcgill_3_model_2)
+
+#Model #3: mcgill_1/2/3 ~ anxiety, depression, PCS, 
+#vbt_fs_pain, vbt_fu_pain, vbt_mt_pain, bl_urine_ml
+
+mcgill_1_model_3 <- lm(mcgill_1 ~ 
+                         promis_anx_t_score + 
+                         promis_dep_t_score +
+                         `PCS-T`+
+                         vbt_fs_pain + 
+                         vbt_fu_pain +
+                         vbt_mt_pain +
+                         bl_urine_ml,
+                       data = regression_subset)
+
+#print summary of model
+summary(mcgill_1_model_3)
+
+mcgill_2_model_3 <- lm(mcgill_2 ~ 
+                         promis_anx_t_score + 
+                         promis_dep_t_score +
+                         `PCS-T`+
+                         vbt_fs_pain + 
+                         vbt_fu_pain +
+                         vbt_mt_pain +
+                         bl_urine_ml,
+                       data = regression_subset)
+
+#print summary of model
+summary(mcgill_2_model_3)
+
+mcgill_3_model_3 <- lm(mcgill_3 ~ 
+                         promis_anx_t_score + 
+                         promis_dep_t_score +
+                         `PCS-T`+
+                         vbt_fs_pain + 
+                         vbt_fu_pain +
+                         vbt_mt_pain +
+                         bl_urine_ml,
+                       data = regression_subset)
+
+#print summary of model
+summary(mcgill_3_model_3)
+
+#Model #4: mcgill_1/2/3 ~ anxiety, depression, PCS, GSRS
+
+mcgill_1_model_4 <- lm(mcgill_1 ~ 
+                         promis_anx_t_score + 
+                         promis_dep_t_score +
+                         `PCS-T`+
+                         gsrs_bl,
+                       data = regression_subset)
+
+#print summary of model
+summary(mcgill_1_model_4)
+
+mcgill_2_model_4 <- lm(mcgill_2 ~ 
+                         promis_anx_t_score + 
+                         promis_dep_t_score +
+                         `PCS-T`+
+                         gsrs_bl,
+                       data = regression_subset)
+
+#print summary of model
+summary(mcgill_2_model_4)
+
+mcgill_3_model_4 <- lm(mcgill_3 ~ 
+                         promis_anx_t_score + 
+                         promis_dep_t_score +
+                         `PCS-T`+
+                         gsrs_bl,
+                       data = regression_subset)
+
+#print summary of model
+summary(mcgill_3_model_4)
+
+#Model #5: mcgill_1/2/3 ~ anxiety, depression, PCS, ICSI
+
+mcgill_1_model_5 <- lm(mcgill_1 ~ 
+                         promis_anx_t_score + 
+                         promis_dep_t_score +
+                         `PCS-T`+
+                         icsi_bl,
+                       data = regression_subset)
+
+#print summary of model
+summary(mcgill_1_model_5)
+
+mcgill_2_model_5 <- lm(mcgill_2 ~ 
+                         promis_anx_t_score + 
+                         promis_dep_t_score +
+                         `PCS-T`+
+                         icsi_bl,
+                       data = regression_subset)
+
+#print summary of model
+summary(mcgill_2_model_5)
+
+mcgill_3_model_5 <- lm(mcgill_3 ~ 
+                         promis_anx_t_score + 
+                         promis_dep_t_score +
+                         `PCS-T`+
+                         icsi_bl,
+                       data = regression_subset)
+
+#print summary of model
+summary(mcgill_3_model_5)
+
+#Model #6: mcgill_1/2/3 ~ anxiety, depression, PCS, GUPI
+
+mcgill_1_model_6 <- lm(mcgill_1 ~ 
+                         promis_anx_t_score + 
+                         promis_dep_t_score +
+                         `PCS-T`+
+                         gupi_bl,
+                       data = regression_subset)
+
+#print summary of model
+summary(mcgill_1_model_6)
+
+mcgill_2_model_6 <- lm(mcgill_2 ~ 
+                         promis_anx_t_score + 
+                         promis_dep_t_score +
+                         `PCS-T`+
+                         gupi_bl,
+                       data = regression_subset)
+
+#print summary of model
+summary(mcgill_2_model_6)
+
+mcgill_3_model_6 <- lm(mcgill_3 ~ 
+                         promis_anx_t_score + 
+                         promis_dep_t_score +
+                         `PCS-T`+
+                         gupi_bl,
+                       data = regression_subset)
+
+#print summary of model
+summary(mcgill_3_model_6)
+
+
+#uncomment to stop logging
+sink()
 

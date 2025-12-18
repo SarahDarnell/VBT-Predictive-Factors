@@ -1,0 +1,429 @@
+
+Call:
+lm(formula = mcgill_1 ~ vbt_fs_pain + vbt_fu_pain + vbt_mt_pain + 
+    bl_urine_ml, data = regression_subset)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-42.185  -8.152  -4.244   0.398  69.987 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)   
+(Intercept)  6.903374   2.639050   2.616  0.00937 **
+vbt_fs_pain  0.279731   0.088102   3.175  0.00166 **
+vbt_fu_pain  0.220946   0.074447   2.968  0.00325 **
+vbt_mt_pain  0.134413   0.047987   2.801  0.00544 **
+bl_urine_ml -0.006429   0.004529  -1.419  0.15683   
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 17.35 on 290 degrees of freedom
+  (57 observations deleted due to missingness)
+Multiple R-squared:  0.2661,	Adjusted R-squared:  0.2559 
+F-statistic: 26.28 on 4 and 290 DF,  p-value: < 2.2e-16
+
+
+Call:
+lm(formula = mcgill_2 ~ vbt_fs_pain + vbt_fu_pain + vbt_mt_pain + 
+    bl_urine_ml, data = regression_subset)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-35.541  -4.279  -1.109   0.414  75.953 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  1.643794   1.852055   0.888  0.37552    
+vbt_fs_pain  0.166383   0.061829   2.691  0.00754 ** 
+vbt_fu_pain  0.260995   0.052246   4.996 1.02e-06 ***
+vbt_mt_pain  0.043602   0.033677   1.295  0.19645    
+bl_urine_ml -0.002707   0.003178  -0.852  0.39500    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 12.17 on 290 degrees of freedom
+  (57 observations deleted due to missingness)
+Multiple R-squared:  0.2855,	Adjusted R-squared:  0.2756 
+F-statistic: 28.97 on 4 and 290 DF,  p-value: < 2.2e-16
+
+
+Call:
+lm(formula = mcgill_3 ~ vbt_fs_pain + vbt_fu_pain + vbt_mt_pain + 
+    bl_urine_ml, data = regression_subset)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-46.800 -10.907  -6.654   5.778  73.056 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)    
+(Intercept) 13.297635   2.893091   4.596 6.42e-06 ***
+vbt_fs_pain  0.176347   0.096582   1.826  0.06890 .  
+vbt_fu_pain  0.261945   0.081613   3.210  0.00148 ** 
+vbt_mt_pain  0.063975   0.052607   1.216  0.22494    
+bl_urine_ml -0.008928   0.004965  -1.798  0.07318 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 19.02 on 290 degrees of freedom
+  (57 observations deleted due to missingness)
+Multiple R-squared:  0.1757,	Adjusted R-squared:  0.1643 
+F-statistic: 15.45 on 4 and 290 DF,  p-value: 1.799e-11
+
+
+Call:
+lm(formula = mcgill_1 ~ promis_anx_t_score + promis_dep_t_score + 
+    `PCS-T`, data = regression_subset)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-27.452 -10.309  -6.332   0.368  79.110 
+
+Coefficients:
+                   Estimate Std. Error t value Pr(>|t|)   
+(Intercept)        -10.6669     7.1089  -1.501  0.13439   
+promis_anx_t_score   0.1751     0.1550   1.130  0.25917   
+promis_dep_t_score   0.1752     0.1474   1.188  0.23550   
+`PCS-T`              0.2776     0.0881   3.151  0.00177 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 19 on 348 degrees of freedom
+Multiple R-squared:  0.06928,	Adjusted R-squared:  0.06125 
+F-statistic: 8.634 on 3 and 348 DF,  p-value: 1.53e-05
+
+
+Call:
+lm(formula = mcgill_2 ~ promis_anx_t_score + promis_dep_t_score + 
+    `PCS-T`, data = regression_subset)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-14.479  -5.994  -3.947  -1.027  72.324 
+
+Coefficients:
+                   Estimate Std. Error t value Pr(>|t|)  
+(Intercept)        -6.90999    5.19499  -1.330   0.1843  
+promis_anx_t_score  0.12376    0.11323   1.093   0.2751  
+promis_dep_t_score  0.07106    0.10773   0.660   0.5100  
+`PCS-T`             0.15970    0.06438   2.481   0.0136 *
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 13.88 on 348 degrees of freedom
+Multiple R-squared:  0.04284,	Adjusted R-squared:  0.03459 
+F-statistic: 5.192 on 3 and 348 DF,  p-value: 0.001608
+
+
+Call:
+lm(formula = mcgill_3 ~ promis_anx_t_score + promis_dep_t_score + 
+    `PCS-T`, data = regression_subset)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-26.624 -12.774  -6.853   4.456  70.570 
+
+Coefficients:
+                    Estimate Std. Error t value Pr(>|t|)  
+(Intercept)        -14.33713    7.26904  -1.972   0.0494 *
+promis_anx_t_score   0.39065    0.15844   2.466   0.0142 *
+promis_dep_t_score   0.08304    0.15074   0.551   0.5821  
+`PCS-T`              0.21499    0.09008   2.386   0.0175 *
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 19.43 on 348 degrees of freedom
+Multiple R-squared:  0.07288,	Adjusted R-squared:  0.06488 
+F-statistic: 9.118 on 3 and 348 DF,  p-value: 7.98e-06
+
+
+Call:
+lm(formula = mcgill_1 ~ promis_anx_t_score + promis_dep_t_score + 
+    `PCS-T` + vbt_fs_pain + vbt_fu_pain + vbt_mt_pain + bl_urine_ml, 
+    data = regression_subset)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-41.354  -9.385  -2.917   1.954  74.296 
+
+Coefficients:
+                    Estimate Std. Error t value Pr(>|t|)   
+(Intercept)        -5.723140   7.497303  -0.763  0.44588   
+promis_anx_t_score  0.066555   0.151483   0.439  0.66073   
+promis_dep_t_score  0.078447   0.143789   0.546  0.58578   
+`PCS-T`             0.285219   0.085866   3.322  0.00101 **
+vbt_fs_pain         0.268020   0.086355   3.104  0.00210 **
+vbt_fu_pain         0.215778   0.072825   2.963  0.00330 **
+vbt_mt_pain         0.122114   0.047080   2.594  0.00998 **
+bl_urine_ml        -0.003502   0.004494  -0.779  0.43650   
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 16.95 on 287 degrees of freedom
+  (57 observations deleted due to missingness)
+Multiple R-squared:  0.3064,	Adjusted R-squared:  0.2895 
+F-statistic: 18.11 on 7 and 287 DF,  p-value: < 2.2e-16
+
+
+Call:
+lm(formula = mcgill_2 ~ promis_anx_t_score + promis_dep_t_score + 
+    `PCS-T` + vbt_fs_pain + vbt_fu_pain + vbt_mt_pain + bl_urine_ml, 
+    data = regression_subset)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-33.827  -4.744  -1.308   1.463  72.471 
+
+Coefficients:
+                    Estimate Std. Error t value Pr(>|t|)    
+(Intercept)        -4.978965   5.329652  -0.934  0.35099    
+promis_anx_t_score  0.048045   0.107685   0.446  0.65582    
+promis_dep_t_score  0.026028   0.102216   0.255  0.79919    
+`PCS-T`             0.149454   0.061040   2.448  0.01495 *  
+vbt_fs_pain         0.160536   0.061387   2.615  0.00939 ** 
+vbt_fu_pain         0.258619   0.051770   4.996 1.02e-06 ***
+vbt_mt_pain         0.037173   0.033468   1.111  0.26762    
+bl_urine_ml        -0.001150   0.003195  -0.360  0.71911    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 12.05 on 287 degrees of freedom
+  (57 observations deleted due to missingness)
+Multiple R-squared:  0.3071,	Adjusted R-squared:  0.2903 
+F-statistic: 18.18 on 7 and 287 DF,  p-value: < 2.2e-16
+
+
+Call:
+lm(formula = mcgill_3 ~ promis_anx_t_score + promis_dep_t_score + 
+    `PCS-T` + vbt_fs_pain + vbt_fu_pain + vbt_mt_pain + bl_urine_ml, 
+    data = regression_subset)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-43.655 -11.291  -4.895   5.297  68.991 
+
+Coefficients:
+                   Estimate Std. Error t value Pr(>|t|)   
+(Intercept)        -9.89451    8.22351  -1.203  0.22989   
+promis_anx_t_score  0.33542    0.16616   2.019  0.04445 * 
+promis_dep_t_score  0.01005    0.15772   0.064  0.94924   
+`PCS-T`             0.20682    0.09418   2.196  0.02890 * 
+vbt_fs_pain         0.15802    0.09472   1.668  0.09635 . 
+vbt_fu_pain         0.25817    0.07988   3.232  0.00137 **
+vbt_mt_pain         0.04697    0.05164   0.910  0.36384   
+bl_urine_ml        -0.00586    0.00493  -1.189  0.23553   
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 18.59 on 287 degrees of freedom
+  (57 observations deleted due to missingness)
+Multiple R-squared:  0.2201,	Adjusted R-squared:  0.2011 
+F-statistic: 11.57 on 7 and 287 DF,  p-value: 5.918e-13
+
+
+Call:
+lm(formula = mcgill_1 ~ promis_anx_t_score + promis_dep_t_score + 
+    `PCS-T` + gsrs_bl, data = regression_subset)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-38.796  -9.419  -4.007   2.538  85.473 
+
+Coefficients:
+                    Estimate Std. Error t value Pr(>|t|)    
+(Intercept)        -14.16948    6.67865  -2.122   0.0346 *  
+promis_anx_t_score  -0.05339    0.14876  -0.359   0.7199    
+promis_dep_t_score   0.16589    0.13812   1.201   0.2305    
+`PCS-T`              0.18204    0.08365   2.176   0.0302 *  
+gsrs_bl              0.68884    0.09792   7.035 1.07e-11 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 17.8 on 347 degrees of freedom
+Multiple R-squared:  0.1854,	Adjusted R-squared:  0.1761 
+F-statistic: 19.75 on 4 and 347 DF,  p-value: 1.164e-14
+
+
+Call:
+lm(formula = mcgill_2 ~ promis_anx_t_score + promis_dep_t_score + 
+    `PCS-T` + gsrs_bl, data = regression_subset)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-18.780  -6.175  -3.170  -0.003  76.994 
+
+Coefficients:
+                   Estimate Std. Error t value Pr(>|t|)    
+(Intercept)        -8.54130    5.08302  -1.680   0.0938 .  
+promis_anx_t_score  0.01733    0.11322   0.153   0.8784    
+promis_dep_t_score  0.06673    0.10512   0.635   0.5260    
+`PCS-T`             0.11519    0.06366   1.809   0.0713 .  
+gsrs_bl             0.32083    0.07453   4.305 2.18e-05 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 13.55 on 347 degrees of freedom
+Multiple R-squared:  0.09137,	Adjusted R-squared:  0.08089 
+F-statistic: 8.723 on 4 and 347 DF,  p-value: 1.017e-06
+
+
+Call:
+lm(formula = mcgill_3 ~ promis_anx_t_score + promis_dep_t_score + 
+    `PCS-T` + gsrs_bl, data = regression_subset)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-38.118  -9.169  -2.320   5.741  54.883 
+
+Coefficients:
+                    Estimate Std. Error t value Pr(>|t|)    
+(Intercept)        -19.88279    6.11071  -3.254  0.00125 ** 
+promis_anx_t_score   0.02883    0.13611   0.212  0.83240    
+promis_dep_t_score   0.06832    0.12637   0.541  0.58910    
+`PCS-T`              0.06366    0.07654   0.832  0.40613    
+gsrs_bl              1.09065    0.08959  12.173  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 16.29 on 347 degrees of freedom
+Multiple R-squared:  0.3503,	Adjusted R-squared:  0.3428 
+F-statistic: 46.78 on 4 and 347 DF,  p-value: < 2.2e-16
+
+
+Call:
+lm(formula = mcgill_1 ~ promis_anx_t_score + promis_dep_t_score + 
+    `PCS-T` + icsi_bl, data = regression_subset)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-31.880 -10.378  -5.548   1.228  80.654 
+
+Coefficients:
+                    Estimate Std. Error t value Pr(>|t|)   
+(Intercept)        -11.95673    7.02412  -1.702  0.08961 . 
+promis_anx_t_score   0.11545    0.15395   0.750  0.45381   
+promis_dep_t_score   0.18555    0.14546   1.276  0.20296   
+`PCS-T`              0.22463    0.08842   2.540  0.01151 * 
+icsi_bl              1.19132    0.36608   3.254  0.00125 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 18.74 on 347 degrees of freedom
+Multiple R-squared:  0.09684,	Adjusted R-squared:  0.08643 
+F-statistic: 9.302 on 4 and 347 DF,  p-value: 3.764e-07
+
+
+Call:
+lm(formula = mcgill_2 ~ promis_anx_t_score + promis_dep_t_score + 
+    `PCS-T` + icsi_bl, data = regression_subset)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-18.455  -6.089  -2.974  -0.163  68.110 
+
+Coefficients:
+                   Estimate Std. Error t value Pr(>|t|)    
+(Intercept)        -8.16760    5.07155  -1.610   0.1082    
+promis_anx_t_score  0.06558    0.11116   0.590   0.5556    
+promis_dep_t_score  0.08116    0.10503   0.773   0.4402    
+`PCS-T`             0.10804    0.06384   1.692   0.0915 .  
+icsi_bl             1.16159    0.26432   4.395 1.48e-05 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 13.53 on 347 degrees of freedom
+Multiple R-squared:  0.0933,	Adjusted R-squared:  0.08285 
+F-statistic: 8.927 on 4 and 347 DF,  p-value: 7.158e-07
+
+
+Call:
+lm(formula = mcgill_3 ~ promis_anx_t_score + promis_dep_t_score + 
+    `PCS-T` + icsi_bl, data = regression_subset)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-32.196 -12.422  -5.623   6.537  67.350 
+
+Coefficients:
+                    Estimate Std. Error t value Pr(>|t|)    
+(Intercept)        -15.98582    7.12040  -2.245   0.0254 *  
+promis_anx_t_score   0.31437    0.15606   2.014   0.0447 *  
+promis_dep_t_score   0.09629    0.14746   0.653   0.5142    
+`PCS-T`              0.14726    0.08963   1.643   0.1013    
+icsi_bl              1.52281    0.37110   4.104 5.08e-05 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 19 on 347 degrees of freedom
+Multiple R-squared:  0.1158,	Adjusted R-squared:  0.1056 
+F-statistic: 11.36 on 4 and 347 DF,  p-value: 1.127e-08
+
+
+Call:
+lm(formula = mcgill_1 ~ promis_anx_t_score + promis_dep_t_score + 
+    `PCS-T` + gupi_bl, data = regression_subset)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-35.209 -10.030  -3.084   1.768  84.338 
+
+Coefficients:
+                   Estimate Std. Error t value Pr(>|t|)    
+(Intercept)        -8.52339    6.51890  -1.307    0.192    
+promis_anx_t_score -0.02749    0.14410  -0.191    0.849    
+promis_dep_t_score  0.19394    0.13510   1.436    0.152    
+`PCS-T`             0.13567    0.08255   1.643    0.101    
+gupi_bl             1.19187    0.14506   8.216 4.21e-15 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 17.41 on 347 degrees of freedom
+Multiple R-squared:  0.2209,	Adjusted R-squared:  0.2119 
+F-statistic: 24.59 on 4 and 347 DF,  p-value: < 2.2e-16
+
+
+Call:
+lm(formula = mcgill_2 ~ promis_anx_t_score + promis_dep_t_score + 
+    `PCS-T` + gupi_bl, data = regression_subset)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-21.873  -5.986  -2.297   0.807  65.023 
+
+Coefficients:
+                     Estimate Std. Error t value Pr(>|t|)    
+(Intercept)        -5.6066601  4.9043566  -1.143    0.254    
+promis_anx_t_score  0.0005666  0.1084117   0.005    0.996    
+promis_dep_t_score  0.0824570  0.1016365   0.811    0.418    
+`PCS-T`             0.0733991  0.0621060   1.182    0.238    
+gupi_bl             0.7246895  0.1091345   6.640 1.21e-10 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 13.1 on 347 degrees of freedom
+Multiple R-squared:  0.1508,	Adjusted R-squared:  0.141 
+F-statistic:  15.4 on 4 and 347 DF,  p-value: 1.322e-11
+
+
+Call:
+lm(formula = mcgill_3 ~ promis_anx_t_score + promis_dep_t_score + 
+    `PCS-T` + gupi_bl, data = regression_subset)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-36.359 -10.471  -4.216   7.008  56.023 
+
+Coefficients:
+                    Estimate Std. Error t value Pr(>|t|)    
+(Intercept)        -12.29437    6.75040  -1.821   0.0694 .  
+promis_anx_t_score   0.19755    0.14922   1.324   0.1864    
+promis_dep_t_score   0.10091    0.13989   0.721   0.4712    
+`PCS-T`              0.07971    0.08548   0.933   0.3517    
+gupi_bl              1.13583    0.15021   7.561  3.6e-13 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 18.03 on 347 degrees of freedom
+Multiple R-squared:  0.204,	Adjusted R-squared:  0.1949 
+F-statistic: 22.24 on 4 and 347 DF,  p-value: 2.327e-16
+
