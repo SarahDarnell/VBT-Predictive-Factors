@@ -1,5 +1,5 @@
 #VBT Predictive Factors ~ part 1
-#Written by Sarah Darnell, last modified 10.27.25
+#Written by Sarah Darnell
 
 library(readr)
 library(dplyr)
@@ -13,7 +13,7 @@ library(readxl)
 setwd("~/Sarah work stuff/2025 Data Projects/VBT Predictive Factors CRAMPP2")
 
 #import redcap pull of variables
-redcap <- read_csv("Raw files/EH22236CRAMPP2-VBTPredictiveFactors_DATA_2025-09-04_1051.csv", 
+redcap <- read_csv("Raw files/EH22236CRAMPP2-VBTPredictiveFactors_DATA_2026-02-26_0943.csv", 
                    col_types = cols(redcap_survey_identifier = col_skip(), 
                                     participant_status_timestamp = col_skip()))
 
@@ -295,7 +295,7 @@ ft <- flextable(demo_df) %>%
 
 read_docx() %>%
   body_add_flextable(ft) %>%
-  print(target = "Tables/VBT_Predictive_Factors_Table1.docx")
+  print(target = "Tables/Updated/VBT_Predictive_Factors_Table1.docx")
 
 ######################################################################
 ##Table 2: Menstrual Pain Characteristics and Hormonal Therapy Usage##
@@ -660,7 +660,7 @@ ft <- flextable(table2) %>%
 
 read_docx() %>%
   body_add_flextable(ft) %>%
-  print(target = "Tables/VBT_Predictive_Factors_Table2.docx")
+  print(target = "Tables/Updated/VBT_Predictive_Factors_Table2.docx")
 
 ############################
 ##Table 3: Medical History##
@@ -1075,7 +1075,7 @@ ft <- flextable(table3) %>%
 
 read_docx() %>%
   body_add_flextable(ft) %>%
-  print(target = "Tables/VBT_Predictive_Factors_Table3.docx")
+  print(target = "Tables/Updated/VBT_Predictive_Factors_Table3.docx")
 
 ######################################
 ##Table 4: Pain and Sensory Profiles##
@@ -1719,7 +1719,7 @@ ft <- flextable(table4) %>%
 
 read_docx() %>%
   body_add_flextable(ft) %>%
-  print(target = "Tables/VBT_Predictive_Factors_Table4.docx")
+  print(target = "Tables/Updated/VBT_Predictive_Factors_Table4.docx")
 
     
 ###################################
@@ -2398,7 +2398,7 @@ ft <- flextable(table5) %>%
 
 read_docx() %>%
   body_add_flextable(ft) %>%
-  print(target = "Tables/VBT_Predictive_Factors_Table5.docx")
+  print(target = "Tables/Updated/VBT_Predictive_Factors_Table5.docx")
 
 ###########################
 ##Supplementary variables##
