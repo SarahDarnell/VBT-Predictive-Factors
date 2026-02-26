@@ -2195,10 +2195,11 @@ redcap <- redcap %>%
 
 #vbt understanding
 redcap <- redcap %>%
-  mutate(understanding_yn = case_match(
-    understanding_yn, 
-    0 ~ "No",
-    1 ~ "Yes"
+  mutate(understanding_yn = case_when(
+    understanding_yn == 0 ~ "No",
+    understanding_yn == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(understanding_yn) ~ "Unknown"
   ))
 
 #saving file
