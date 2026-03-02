@@ -2406,7 +2406,7 @@ read_docx() %>%
 ###########################
 
 #load in VBT urine pan volume spreadsheet
-urine_volumes <- read_excel("Raw files/URINE SAMPLE MEASURES_09.25.25.xlsx")
+urine_volumes <- read_excel("Raw files/URINE SAMPLE MEASURES_03.02.26.xlsx")
 
 #merge with larger dataset
 redcap <- redcap %>%
@@ -2503,7 +2503,7 @@ ft <- flextable(table_urine) %>%
 
 read_docx() %>%
   body_add_flextable(ft) %>%
-  print(target = "Tables/VBT_Predictive_Factors_Table_Urine.docx")
+  print(target = "Tables/Updated/VBT_Predictive_Factors_Table_Urine.docx")
 
 
 #####################################

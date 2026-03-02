@@ -59,6 +59,9 @@ ggplot(redcap, aes(x = Group, y = gupi_bl)) +
 ## Correlation matrices (GSRS, ICSI, GUPI ) ##
 ##############################################
 
+#uncomment to save output
+sink("Logs/3.2.26/cor_matrix_log.txt")
+
 #subset needed variables
 correlation_subset <- redcap %>%
   filter(redcap_event_name == "virtual_assessment_arm_1") %>%
@@ -71,10 +74,13 @@ vars <- correlation_subset %>% select(vbt_fu_pain, bl_urine_ml,
                                       mcgill_1, mcgill_2, mcgill_3)
 
 #spearman matrix
-spearman <- cor(vars, method = "spearman", use = "pairwise.complete.obs")
+cor(vars, method = "spearman", use = "pairwise.complete.obs")
+
 
 #pearson matrix
-pearson <- cor(vars, method = "pearson", use = "pairwise.complete.obs")
+cor(vars, method = "pearson", use = "pairwise.complete.obs")
+
+sink()
 
 
 ###########################################
