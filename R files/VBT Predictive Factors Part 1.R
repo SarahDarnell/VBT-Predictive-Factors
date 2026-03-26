@@ -2167,9 +2167,19 @@ redcap <- redcap %>%
 redcap <- redcap %>%
   mutate(time_drinking_fu_mins = as.numeric(vbt_fu_time - vbt_time_drinking)/60)
 
-#time between drinking and mt
+#dummy var for cap out
 redcap <- redcap %>%
-  mutate(time_drinking_mt_mins = as.numeric(vbt_mt_time - vbt_time_drinking)/60)
+  mutate(capped_out = case_when(
+    redcap_event_name == "virtual_assessment_arm_1" & is.na(vbt_cap_out_time) ~ 0, 
+    redcap_event_name == "virtual_assessment_arm_1" & !is.na(vbt_cap_out_time) ~ 1,
+    redcap_event_name != "virtual_assessment_arm_1" ~ NA))
+
+#time between drinking and mt, throw out anyone who capped out
+redcap <- redcap %>%
+  mutate(time_drinking_mt_mins = case_when(
+    capped_out == 0 ~ as.numeric(vbt_mt_time - vbt_time_drinking)/60,
+    capped_out == 1 ~ NA
+  ))
 
 #flag for negative times or total times that are over 150 mins (1 = true, 0 = false)
 redcap_flag <- redcap %>%
@@ -2242,7 +2252,8 @@ redcap_table5 <- redcap %>%
     `MT sharp pain (VAS)` = vbt_sharp, 
     `MT pressing pain (VAS)` = vbt_pressing, 
     `Understanding of bladder task` = understanding_yn, 
-    `Focus during bladder task (VAS)` = understanding_focus
+    `Focus during bladder task (VAS)` = understanding_focus, 
+    `Capped out of bladder task` = capped_out
   )
 
 vars <- c("Promis physical function", 
@@ -2281,7 +2292,8 @@ vars <- c("Promis physical function",
           "MT sharp pain (VAS)",
           "MT pressing pain (VAS)",
           "Understanding of bladder task",
-          "Focus during bladder task (VAS)"
+          "Focus during bladder task (VAS)", 
+          "Capped out of bladder task"
           )
 
 nonnormal_vars <- c("Promis physical function", 
@@ -2323,7 +2335,8 @@ nonnormal_vars <- c("Promis physical function",
                     )
 
 #Creating summary table 5
-sum <- CreateTableOne(vars, data = redcap_table5, strata = "Group")
+sum <- CreateTableOne(vars, data = redcap_table5, strata = "Group", 
+                      factorVars = "Capped out of bladder task")
 
 sum_df <- as.data.frame(print(sum,
                               nonnormal = nonnormal_vars,
@@ -2337,7 +2350,8 @@ sum_df <- as.data.frame(print(sum,
 redcap_table5_p <- redcap_table5 %>%
   filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
 
-comp <- CreateTableOne(vars, data = redcap_table5_p, strata = "Group")
+comp <- CreateTableOne(vars, data = redcap_table5_p, strata = "Group",
+                       factorVars = "Capped out of bladder task")
 
 comp_df <- as.data.frame(print(comp,
                                nonnormal = vars,
