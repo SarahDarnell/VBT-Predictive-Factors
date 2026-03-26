@@ -2181,6 +2181,18 @@ redcap <- redcap %>%
     capped_out == 1 ~ NA
   ))
 
+#MT urgency and pain, throw out anyone who capped out
+redcap <- redcap %>%
+  mutate(vbt_mt_urgency = case_when(
+    capped_out == 0 ~ vbt_mt_urgency, 
+    capped_out == 1 ~ NA
+  )) %>%
+  mutate(vbt_mt_pain = case_when(
+    capped_out == 0 ~ vbt_mt_pain, 
+    capped_out == 1 ~ NA
+  ))
+
+
 #flag for negative times or total times that are over 150 mins (1 = true, 0 = false)
 redcap_flag <- redcap %>%
   filter(redcap_event_name == "virtual_assessment_arm_1") %>%
