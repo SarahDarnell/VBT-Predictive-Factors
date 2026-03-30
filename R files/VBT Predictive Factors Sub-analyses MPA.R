@@ -10,6 +10,7 @@ library(tidyr)
 library(flextable)
 library(officer)
 library(patchwork)
+library(tableone)
 
 #set working directory
 setwd("~/Sarah work stuff/2025 Data Projects/VBT Predictive Factors CRAMPP2")
@@ -110,7 +111,7 @@ dep_box_plot <- ggplot(redcap_subset, aes(x = ms_thc, y = promis_dep_t_score, fi
     y = "Depression t-score",
     x = "THC usage"
   ) +
-  scale_fill_brewer(palette = "Set2")
+  scale_fill_manual(values = c("#D8B4FE", "#90CAF9"))
 
 ggsave("plots/dep_box_plot.png", plot = dep_box_plot)
 
@@ -126,7 +127,7 @@ anx_box_plot<- ggplot(redcap_subset, aes(x = ms_thc, y = promis_anx_t_score, fil
     y = "Anxiety t-score",
     x = "THC usage"
   ) +
-  scale_fill_brewer(palette = "Set2")
+  scale_fill_manual(values = c("#D8B4FE", "#90CAF9"))
 
 ggsave("plots/anx_box_plot.png", plot = anx_box_plot)
 
@@ -329,6 +330,57 @@ thc_model_4 <- lm(promis_dep_t_score ~
 #print summary of model
 summary(thc_model_4)
 
+#coefficient plot of model 1
+model_1_coeff_plot <- tidy(thc_model_1, conf.int = TRUE) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(term = recode(term,
+                       "ms_thcYes" = "THC (Yes)",
+                       "education_mpaPost-Graduate Degree" = "Education: Post-Grad",
+                       "education_mpaCollege Degree" = "Education: College",
+                       "hispanic_mpa" = "Hispanic",
+                       "mh3_race_5_revised" = "Race: White"
+  )) %>%
+  ggplot(aes(x = estimate, y = reorder(term, estimate))) +
+  geom_col(aes(fill = term == "THC (Yes)"), width = 0.5, alpha = 0.85) +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2, linewidth = 0.8) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red", alpha = 0.5) +
+  scale_fill_manual(values = c("TRUE" = "#D8B4FE", "FALSE" = "#90CAF9")) +
+  theme_bw(base_size = 13) +
+  theme(legend.position = "none") +
+  labs(
+    x = "Estimate (B)",
+    y = NULL,
+    caption = "Error bars = 95% CI"
+  )
+
+ggsave("plots/model_1_coeff_plot.png", plot = model_1_coeff_plot)
+
+#coefficient plot of model 3
+model_3_coeff_plot <- tidy(thc_model_3, conf.int = TRUE) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(term = recode(term,
+                       "ms_thcYes" = "THC (Yes)",
+                       "education_mpaPost-Graduate Degree" = "Education: Post-Grad",
+                       "education_mpaCollege Degree" = "Education: College",
+                       "hispanic_mpa" = "Hispanic",
+                       "mh3_race_5_revised" = "Race: White"
+  )) %>%
+  ggplot(aes(x = estimate, y = reorder(term, estimate))) +
+  geom_col(aes(fill = term == "THC (Yes)"), width = 0.5, alpha = 0.85) +
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2, linewidth = 0.8) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red", alpha = 0.5) +
+  scale_fill_manual(values = c("TRUE" = "#D8B4FE", "FALSE" = "#90CAF9")) +
+  theme_bw(base_size = 13) +
+  theme(legend.position = "none") +
+  labs(
+    x = "Estimate (B)",
+    y = NULL,
+    caption = "Error bars = 95% CI"
+  )
+
+ggsave("plots/model_3_coeff_plot.png", plot = model_3_coeff_plot)
+
+
 #######################################################################################
 ##KJ project - SES and correlations anx, dep, race, ethnicity, gender, and pain at FU##
 #######################################################################################
@@ -418,12 +470,14 @@ read_docx() %>%
   body_add_flextable(ft) %>%
   print(target = "Tables/MPA/ses_table_n.docx")
 
-#scatter plot of US standing and anxiety
+#scatter plot of US standing and anxiety - updated to sum score
 anx_US_plot <- ggplot(redcap_subset, aes(x = macarthur_ladder_us, y = promis_anx_t_score)) +
-  geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
+  geom_point(alpha = 0.6, color = "#87AE8A") +
+  geom_smooth(method = "lm", se = FALSE, color = "#4A7A4E") +
   labs(x = "SSS in U.S. (1–10)", y = "Anxiety t-score") +
   theme_minimal()
+
+ggsave("plots/anx_US_plott.png", plot = anx_US_plot)
 
 #scatter plot of community standing and anxiety
 anx_comm_plot <- ggplot(redcap_subset, aes(x = macarthur_ladder_community, y = promis_anx_t_score)) +
@@ -434,10 +488,12 @@ anx_comm_plot <- ggplot(redcap_subset, aes(x = macarthur_ladder_community, y = p
 
 #scatter plot of US standing and depression
 dep_US_plot <- ggplot(redcap_subset, aes(x = macarthur_ladder_us, y = promis_dep_t_score)) +
-  geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
+  geom_point(alpha = 0.6, color = "#87AE8A") +
+  geom_smooth(method = "lm", se = FALSE, color = "#4A7A4E") +
   labs(x = "SSS in U.S. (1–10)", y = "Depression t-score") +
   theme_minimal()
+
+ggsave("plots/dep_US_plot.png", plot = dep_US_plot)
 
 #scatter plot of community standing and depression
 dep_comm_plot <- ggplot(redcap_subset, aes(x = macarthur_ladder_community, y = promis_dep_t_score)) +
@@ -448,10 +504,12 @@ dep_comm_plot <- ggplot(redcap_subset, aes(x = macarthur_ladder_community, y = p
 
 #scatter plot of US standing and mh23
 mp_US_plot <- ggplot(redcap_subset, aes(x = macarthur_ladder_us, y = mh23)) +
-  geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
+  geom_point(alpha = 0.6, color = "#87AE8A") +
+  geom_smooth(method = "lm", se = FALSE, color = "#4A7A4E") +
   labs(x = "SSS in U.S. (1–10)", y = "Menstrual pain (VAS)") +
   theme_minimal()
+
+ggsave("plots/mp_US_plot.png", plot = mp_US_plot)
 
 #scatter plot of community standing and mh23
 mp_comm_plot <- ggplot(redcap_subset, aes(x = macarthur_ladder_community, y = mh23)) +
