@@ -192,6 +192,14 @@ redcap <- redcap %>%
       .x
     ))
   )) 
+#new var for ever given birth
+redcap <- redcap %>%
+  mutate(birth_yn = case_when(
+    redcap_event_name == "virtual_assessment_arm_1" &
+      mh15_vagbirths > 0 | mh14_csection > 0 ~ 1, 
+    redcap_event_name == "virtual_assessment_arm_1" &
+      mh15_vagbirths == 0 & mh14_csection == 0 ~ 0
+  ))
 #income
 redcap <- redcap %>%
   mutate(mh_income = case_match(
@@ -218,18 +226,16 @@ redcap_table1 <- redcap %>%
     `Nicotine Usage` = mh_smoking, 
     `THC (Marijuana) Usage` = ms_thc, 
     `Have you ever had a problem with drugs or alcohol?` = mh9b1, 
-    `Vaginal Births` = mh15_vagbirths, 
-    `Caesarean Section Births` = mh14_csection, 
+    `Given Birth` = birth_yn,
     Income = mh_income
   )
 
 vars <- c("Age", "Assigned Sex at Birth", "Gender", "Race", "Ethnicity", 
-          "Education", "Employment", "Income", "Vaginal Births", 
-          "Caesarean Section Births", "Nicotine Usage", "THC (Marijuana) Usage", 
+          "Education", "Employment", "Income", "Given Birth", "Nicotine Usage", "THC (Marijuana) Usage", 
           "Have you ever had a problem with drugs or alcohol?")
 factor_vars <- c("Assigned Sex at Birth", "Gender", "Race", "Ethnicity", 
-                 "Education", "Employment", "Income", "Nicotine Usage", 
-                 "THC (Marijuana) Usage", 
+                 "Education", "Employment", "Income", "Given Birth", 
+                 "Nicotine Usage", "THC (Marijuana) Usage", 
                  "Have you ever had a problem with drugs or alcohol?")
 
 
@@ -496,6 +502,17 @@ redcap <- redcap %>%
     tampon_test == 10 ~ 10, 
     TRUE ~ tampon_test
   ))
+
+#count of responses for mh23a and mh27b, uncomment to view
+#redcap_subset <- redcap %>%
+#  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+#  select(record_id, Group, mh23a, mh27b)
+#redcap_subset %>%
+#  group_by(Group) %>%
+#  summarise(
+#    na_mh23a = sum(!is.na(mh23a)),
+#    na_mh27b = sum(!is.na(mh27b))
+#  )
 
 #saving file
 write_csv(redcap, "Edited data files/redcap_post_table2.csv")  
@@ -1362,7 +1379,7 @@ redcap_subset_3 <- redcap %>%
                          dd_pain_3_day4, dd_pain_3_day5, na.rm = TRUE)) %>%
   slice_head() %>%
   ungroup() %>%
-  select(1, 355) 
+  select(1, 356) 
   
 redcap <- redcap %>%
   left_join(
@@ -1392,7 +1409,7 @@ redcap_subset_4 <- redcap %>%
                                dd_bleeding_m_h_day5, na.rm = TRUE)) %>%
   slice_head() %>%
   ungroup() %>%
-  select(1, 356) 
+  select(1, 357) 
 
 redcap <- redcap %>%
   left_join(
@@ -1422,7 +1439,7 @@ redcap_subset_5 <- redcap %>%
                                   dd_bleeding_day5, na.rm = TRUE)) %>%
   slice_head() %>%
   ungroup() %>%
-  select(1, 357) 
+  select(1, 358) 
 
 redcap <- redcap %>%
   left_join(
@@ -1951,7 +1968,7 @@ redcap_propr <- redcap %>%
   ) %>%
   select(-results) %>%   # drop the temporary list column
   ungroup() %>%
-  select(1, 388:395)
+  select(1, 389:396)
 
 #merge PROPr and individual utility scores back into dataset
 redcap <- redcap %>%
@@ -2159,6 +2176,173 @@ redcap <- redcap %>%
     TRUE ~ promis_belly_se
   ))
 
+#Defining vars for table 5
+redcap_table5 <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  rename(
+    `Promis physical function` = promis_pf_t_score, 
+    `Promis anxiety` = promis_anx_t_score, 
+    `Promis depression` = promis_dep_t_score, 
+    `Promis fatigue` = promis_fat_t_score, 
+    `Promis sleep disturbance` = promis_sd_t_score, 
+    `Promis social roles` = promis_sr_t_score, 
+    `Promis pain interference` = promis_pi_t_score, 
+    `Promis cognitive function` = promis_cf_t_score, 
+    `Promis average pain` = promis_average_pain, 
+    `Promis PROPr` = PROPr, 
+    `Promis positive affect (ped)` = promis_pos_t_score, 
+    `Promis belly pain` = promis_belly_t_score, 
+    `GSS` = gss_sum, 
+    `MacArthur U.S. standing` = macarthur_ladder_us, 
+    `MacArthur community standing` = macarthur_ladder_community, 
+    `ACES` = aces_sum, 
+    `Perceived stress` = pss_sum, 
+    `GSRS` = gsrs_bl, 
+    `ICSI` = icsi_bl, 
+    `GUPI` = gupi_bl
+  )
+
+vars <- c("Promis physical function", 
+          "Promis anxiety", 
+          "Promis depression", 
+          "Promis fatigue", 
+          "Promis sleep disturbance", 
+          "Promis social roles", 
+          "Promis pain interference", 
+          "Promis cognitive function", 
+          "Promis average pain", 
+          "Promis PROPr", 
+          "Promis positive affect (ped)", 
+          "Promis belly pain", 
+          "PCS-T", 
+          "PCS-R", 
+          "PCS-M", 
+          "PCS-H", 
+          "GSS", 
+          "MacArthur U.S. standing", 
+          "MacArthur community standing", 
+          "ACES",
+          "Perceived stress",
+          "GSRS",
+          "ICSI",
+          "GUPI"
+)
+
+nonnormal_vars <- c("Promis physical function", 
+                    "Promis anxiety", 
+                    "Promis depression", 
+                    "Promis fatigue", 
+                    "Promis sleep disturbance", 
+                    "Promis social roles", 
+                    "Promis pain interference", 
+                    "Promis cognitive function", 
+                    "Promis average pain", 
+                    "Promis PROPr", 
+                    "Promis positive affect (ped)", 
+                    "Promis belly pain", 
+                    "PCS-T", 
+                    "PCS-R", 
+                    "PCS-M", 
+                    "PCS-H", 
+                    "GSS", 
+                    "MacArthur U.S. standing", 
+                    "MacArthur community standing", 
+                    "ACES",
+                    "Perceived stress",
+                    "GSRS",
+                    "ICSI",
+                    "GUPI"
+)
+
+#Creating summary table 5
+sum <- CreateTableOne(vars, data = redcap_table5, strata = "Group")
+
+sum_df <- as.data.frame(print(sum,
+                              nonnormal = nonnormal_vars,
+                              printToggle = FALSE,
+                              quote = FALSE,
+                              noSpaces = TRUE,
+                              showAllLevels = TRUE, 
+                              pValues = FALSE))
+
+#Creating table with comparisons for DYS and DYSB
+redcap_table5_p <- redcap_table5 %>%
+  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
+
+comp <- CreateTableOne(vars, data = redcap_table5_p, strata = "Group")
+
+comp_df <- as.data.frame(print(comp,
+                               nonnormal = vars,
+                               printToggle = FALSE,
+                               quote = FALSE,
+                               noSpaces = TRUE,
+                               showAllLevels = TRUE, 
+                               pValues = TRUE)) %>%
+  dplyr::select("p")
+
+#merge summary and comparison tables
+table5 <- cbind(sum_df, p_dys_dysb = comp_df$p )
+
+#reformat and save table
+#Step 1: save rownames as a column
+table5 <- data.frame(rowname = rownames(table5), table5, row.names = NULL)
+
+# Step 2: Create an empty output data frame
+restructured_df <- data.frame()
+
+# Step 3: Loop through rows and insert variable name before its levels
+current_var <- NA
+
+for (i in seq_len(nrow(table5))) {
+  row_label <- table5$rowname[i]
+  if (!startsWith(row_label, "  ")) {
+    # Continuous variable row — use as is
+    current_var <- row_label
+    new_row <- table5[i, ]
+    new_row$Variable <- current_var
+    restructured_df <- bind_rows(restructured_df, new_row)
+  } else {
+    # Categorical level — insert variable name row if not already added
+    if (!identical(tail(restructured_df$Variable, 1), current_var)) {
+      var_row <- table5[i, ]
+      var_row[2:ncol(var_row)] <- ""  # clear values
+      var_row$Variable <- current_var
+      restructured_df <- bind_rows(restructured_df, var_row)
+    }
+    level_row <- table5[i, ]
+    level_row$Variable <- ""
+    restructured_df <- bind_rows(restructured_df, level_row)
+  }
+}
+
+# Step 4: Drop original rowname and reorder
+restructured_df <- restructured_df[, c("Variable", setdiff(names(restructured_df), c("rowname", "Variable")))]
+
+
+#building flextable
+ft <- flextable(table5) %>%
+  bold(i = which(table5$Variable != ""), j = 1) %>%      # Bold variable rows
+  align(align = "left", part = "all") %>%                 # Align left
+  fontsize(size = 9, part = "all") %>%                    # Reduce font size
+  set_table_properties(layout = "fixed", width = 1) %>%   # Fixed width layout
+  width(j = 1, width = 2.25) %>%                          # Widen first column for variable names
+  width(j = 2:ncol(table5), width = 1.25) %>%            # Narrow group columns
+  theme_vanilla()
+
+read_docx() %>%
+  body_add_flextable(ft) %>%
+  print(target = "Tables/Updated/VBT_Predictive_Factors_Table5_part1.docx")
+
+
+
+
+
+
+
+
+
+
+
 #time between finishing drinking and FS
 redcap <- redcap %>%
   mutate(time_drinking_fs_mins = as.numeric(vbt_fs_time - vbt_time_drinking)/60)
@@ -2203,7 +2387,7 @@ redcap_flag <- redcap %>%
       all(is.na(c(time_drinking_fs_mins, time_drinking_fu_mins, time_drinking_mt_mins)))
   ) %>%
   ungroup()%>%
-  select(1, 412)
+  select(1, 414)
 
 redcap <- redcap %>%
   left_join(
@@ -2227,31 +2411,12 @@ redcap <- redcap %>%
 #saving file
 write_csv(redcap, "Edited data files/redcap_post_table5.csv") 
 
-#Defining vars for table 5, throwing out anyone flagged for weird VBT times
+
+#Defining vars for table 5 part 2 (bladder test), throwing out anyone flagged for weird VBT times
 redcap_table5 <- redcap %>%
   filter(redcap_event_name == "virtual_assessment_arm_1") %>%
   filter(vbt_flag == 0) %>%
   rename(
-    `Promis physical function` = promis_pf_t_score, 
-    `Promis anxiety` = promis_anx_t_score, 
-    `Promis depression` = promis_dep_t_score, 
-    `Promis fatigue` = promis_fat_t_score, 
-    `Promis sleep disturbance` = promis_sd_t_score, 
-    `Promis social roles` = promis_sr_t_score, 
-    `Promis pain interference` = promis_pi_t_score, 
-    `Promis cognitive function` = promis_cf_t_score, 
-    `Promis average pain` = promis_average_pain, 
-    `Promis PROPr` = PROPr, 
-    `Promis positive affect (ped)` = promis_pos_t_score, 
-    `Promis belly pain` = promis_belly_t_score, 
-    `GSS` = gss_sum, 
-    `MacArthur U.S. standing` = macarthur_ladder_us, 
-    `MacArthur community standing` = macarthur_ladder_community, 
-    `ACES` = aces_sum, 
-    `Perceived stress` = pss_sum, 
-    `GSRS` = gsrs_bl, 
-    `ICSI` = icsi_bl, 
-    `GUPI` = gupi_bl, 
     `Time to FS (mins)` = time_drinking_fs_mins, 
     `Time to FU (mins)` = time_drinking_fu_mins, 
     `Time to MT (mins)` = time_drinking_mt_mins, 
@@ -2268,31 +2433,7 @@ redcap_table5 <- redcap %>%
     `Capped out of bladder task` = capped_out
   )
 
-vars <- c("Promis physical function", 
-          "Promis anxiety", 
-          "Promis depression", 
-          "Promis fatigue", 
-          "Promis sleep disturbance", 
-          "Promis social roles", 
-          "Promis pain interference", 
-          "Promis cognitive function", 
-          "Promis average pain", 
-          "Promis PROPr", 
-          "Promis positive affect (ped)", 
-          "Promis belly pain", 
-          "PCS-T", 
-          "PCS-R", 
-          "PCS-M", 
-          "PCS-H", 
-          "GSS", 
-          "MacArthur U.S. standing", 
-          "MacArthur community standing", 
-          "ACES",
-          "Perceived stress",
-          "GSRS",
-          "ICSI",
-          "GUPI",
-          "Time to FS (mins)",
+vars <- c("Time to FS (mins)",
           "Time to FU (mins)",
           "Time to MT (mins)",
           "FS bladder urgency (VAS)",
@@ -2308,31 +2449,7 @@ vars <- c("Promis physical function",
           "Capped out of bladder task"
           )
 
-nonnormal_vars <- c("Promis physical function", 
-                    "Promis anxiety", 
-                    "Promis depression", 
-                    "Promis fatigue", 
-                    "Promis sleep disturbance", 
-                    "Promis social roles", 
-                    "Promis pain interference", 
-                    "Promis cognitive function", 
-                    "Promis average pain", 
-                    "Promis PROPr", 
-                    "Promis positive affect (ped)", 
-                    "Promis belly pain", 
-                    "PCS-T", 
-                    "PCS-R", 
-                    "PCS-M", 
-                    "PCS-H", 
-                    "GSS", 
-                    "MacArthur U.S. standing", 
-                    "MacArthur community standing", 
-                    "ACES",
-                    "Perceived stress",
-                    "GSRS",
-                    "ICSI",
-                    "GUPI",
-                    "Time to FS (mins)",
+nonnormal_vars <- c("Time to FS (mins)",
                     "Time to FU (mins)",
                     "Time to MT (mins)",
                     "FS bladder urgency (VAS)",
@@ -2425,7 +2542,7 @@ ft <- flextable(table5) %>%
 
 read_docx() %>%
   body_add_flextable(ft) %>%
-  print(target = "Tables/Updated/VBT_Predictive_Factors_Table5.docx")
+  print(target = "Tables/Updated/VBT_Predictive_Factors_Table5_part2.docx")
 
 ###########################
 ##Supplementary variables##
