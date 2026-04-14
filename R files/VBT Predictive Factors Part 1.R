@@ -493,8 +493,7 @@ redcap <- redcap %>%
     1 ~ "Yes", 
     0 ~ "No"
   ))
-#tampon test pain (making new var with only 0-10 numeric, 
-#keeping old var for reference later)
+#tampon test pain 
 redcap <- redcap %>%
   mutate(tampon_test = case_when(
     tampon_test == 99 ~ NA, 
@@ -503,15 +502,16 @@ redcap <- redcap %>%
     TRUE ~ tampon_test
   ))
 
-#count of responses for mh23a and mh27b, uncomment to view
+#count of responses for mh23a, mh27b and tampon test, uncomment to view
 #redcap_subset <- redcap %>%
 #  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
-#  select(record_id, Group, mh23a, mh27b)
+#  select(record_id, Group, mh23a, mh27b, tampon_test)
 #redcap_subset %>%
 #  group_by(Group) %>%
 #  summarise(
 #    na_mh23a = sum(!is.na(mh23a)),
-#    na_mh27b = sum(!is.na(mh27b))
+#    na_mh27b = sum(!is.na(mh27b)),
+#    na_tampon_test = sum(!is.na(tampon_test))
 #  )
 
 #saving file
@@ -2556,6 +2556,17 @@ redcap <- redcap %>%
   left_join(urine_volumes, by = "record_id") %>%
   mutate(bl_urine_ml = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
                       bl_urine_ml, NA))
+
+#count of responses urine measurements
+redcap_subset <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  select(record_id, Group, bl_urine_ml, vbt_flag)
+redcap_subset %>%
+  filter(vbt_flag == 0) %>%
+  group_by(Group) %>%
+  summarise(
+    na_bl_urine_ml = sum(!is.na(bl_urine_ml))
+  )
 
 #saving file
 write_csv(redcap, "Edited data files/redcap_post_supplementary_vars.csv") 
