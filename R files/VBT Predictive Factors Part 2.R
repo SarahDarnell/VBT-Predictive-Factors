@@ -11,6 +11,51 @@ setwd("~/Sarah work stuff/2025 Data Projects/VBT Predictive Factors CRAMPP2")
 #import latest dataset
 redcap <- read_csv("Edited data files/redcap_post_supplementary_vars.csv")
 
+redcap_subset <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  select(record_id, Group, vbt_fu_pain)
+
+#1746, 1760, 1956, 2661, 2995 need to be switched to DYS instead of DYSB
+
+########################
+##Histogram of FU pain##
+########################
+
+#option 1 - Mirror histogram - need to figure out transparency
+ggplot(redcap, aes(x = vbt_fu_pain, fill = Group)) +
+  geom_histogram(color="#e9ecef", alpha=0.3, position = 'identity', 
+                 binwidth = 5, boundary = 0) +
+  scale_fill_manual(values=c("#ff851b", "#d62839", "#0074D9")) +
+  labs(fill="")
+
+#option 2 - small multiple
+ggplot(redcap, aes(x=vbt_fu_pain, fill=Group)) +
+  geom_histogram(color="#e9ecef", alpha=0.8, binwidth = 5) +
+  scale_fill_manual(values=c("#ff851b", "#d62839", "#0074D9")) +
+  theme(
+    legend.position="none",
+    panel.spacing = unit(0.1, "lines"),
+    strip.text.x = element_text(size = 8)
+  ) +
+  facet_wrap(~Group)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #############################################
 ##CPP measures box plots (GSRS, ICSI, GUPI)##
 #############################################

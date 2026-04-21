@@ -13,7 +13,7 @@ library(readxl)
 setwd("~/Sarah work stuff/2025 Data Projects/VBT Predictive Factors CRAMPP2")
 
 #import redcap pull of variables
-redcap <- read_csv("Raw files/EH22236CRAMPP2-VBTPredictiveFactors_DATA_2026-02-26_0943.csv", 
+redcap <- read_csv("Raw files/EH22236CRAMPP2-VBTPredictiveFactors_DATA_2026-04-21_1413.csv", 
                    col_types = cols(redcap_survey_identifier = col_skip(), 
                                     participant_status_timestamp = col_skip()))
 
@@ -2335,14 +2335,6 @@ read_docx() %>%
 
 
 
-
-
-
-
-
-
-
-
 #time between finishing drinking and FS
 redcap <- redcap %>%
   mutate(time_drinking_fs_mins = as.numeric(vbt_fs_time - vbt_time_drinking)/60)
@@ -2549,7 +2541,7 @@ read_docx() %>%
 ###########################
 
 #load in VBT urine pan volume spreadsheet
-urine_volumes <- read_excel("Raw files/URINE SAMPLE MEASURES_03.02.26.xlsx")
+urine_volumes <- read_excel("Raw files/URINE SAMPLE MEASURES_04.21.26.xlsx")
 
 #merge with larger dataset
 redcap <- redcap %>%
