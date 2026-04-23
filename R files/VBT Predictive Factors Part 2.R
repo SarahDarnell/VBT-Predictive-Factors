@@ -11,26 +11,25 @@ setwd("~/Sarah work stuff/2025 Data Projects/VBT Predictive Factors CRAMPP2")
 #import latest dataset
 redcap <- read_csv("Edited data files/redcap_post_supplementary_vars.csv")
 
-redcap_subset <- redcap %>%
-  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
-  select(record_id, Group, vbt_fu_pain)
-
-#1746, 1760, 1956, 2661, 2995 need to be switched to DYS instead of DYSB
-
 ########################
 ##Histogram of FU pain##
 ########################
 
-#option 1 - Mirror histogram - need to figure out transparency
-ggplot(redcap, aes(x = vbt_fu_pain, fill = Group)) +
-  geom_histogram(color="#e9ecef", alpha=0.3, position = 'identity', 
+redcap_noflag <- redcap %>%
+  filter(vbt_flag != 1)
+
+#option 1 - Mirror histogram
+histogram_v1 <- ggplot(redcap_noflag, aes(x = vbt_fu_pain, fill = Group)) +
+  geom_histogram(color="#e9ecef", position = 'identity', 
                  binwidth = 5, boundary = 0) +
   scale_fill_manual(values=c("#ff851b", "#d62839", "#0074D9")) +
   labs(fill="")
 
+ggsave("plots/hist_fu_pain_v1.png", plot = histogram_v1)
+
 #option 2 - small multiple
-ggplot(redcap, aes(x=vbt_fu_pain, fill=Group)) +
-  geom_histogram(color="#e9ecef", alpha=0.8, binwidth = 5) +
+histogram_v2 <- ggplot(redcap_noflag, aes(x=vbt_fu_pain, fill=Group)) +
+  geom_histogram(color="#e9ecef", binwidth = 5, boundary = 0) +
   scale_fill_manual(values=c("#ff851b", "#d62839", "#0074D9")) +
   theme(
     legend.position="none",
@@ -39,12 +38,31 @@ ggplot(redcap, aes(x=vbt_fu_pain, fill=Group)) +
   ) +
   facet_wrap(~Group)
 
+ggsave("plots/hist_fu_pain_v2.png", plot = histogram_v2)
 
 
+#############################
+##Plot of FU pain VBT vs IP##
+#############################
 
+redcap_noflag_noHC <- redcap %>%
+  filter(vbt_flag != 1) %>%
+  filter(Group != "Pain Free Control")
 
+scatter_plot_fupain <- ggplot(redcap_noflag_noHC, aes(x = ipb_fupain, y = vbt_fu_pain, color = Group)) +
+  geom_point() +
+  scale_color_manual(values = c("#ff851b", "#d62839")) +
+  scale_x_continuous(limits = c(0, 100)) +
+  scale_y_continuous(limits = c(0, 100)) +
+  labs(
+    x = "VBT first urge pain",
+    y = "In-person first urge pain",
+    title = "Virtual vs In-person Pain at First Urge to Void"
+  ) +
+  theme_bw() +
+  theme(legend.position = "bottom")
 
-
+ggsave("plots/scat_fu_pain_.png", plot = scatter_plot_fupain)
 
 
 

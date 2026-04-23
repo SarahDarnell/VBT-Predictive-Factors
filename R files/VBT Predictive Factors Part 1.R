@@ -2152,13 +2152,19 @@ redcap <- redcap %>%
     promis_belly_t_score = t_score,
     promis_belly_se = se
   ) 
+
+
 #calculate t score and se for sum of 6 (dependent response to question 1)
 #load in dataset that contains responses for [promis_gisx78], and merge
-redcap_sup_vars <- read_csv("Raw files/EH22236CRAMPP2-VBTPredictiveFactors_DATA_2025-09-18_1412.csv", 
-                            col_types = cols(redcap_event_name = col_skip()))
+redcap_sup_vars <- read_csv("Raw files/EH22236CRAMPP2-VBTPredictiveFactors_DATA_2026-04-23_1230.csv")
+
+#filter to only inclue gisx78
+redcap_sup_gisx78 <- redcap_sup_vars %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  select(record_id, promis_gisx78)
 
 redcap <- redcap %>%
-  left_join(redcap_sup_vars, by = "record_id") %>%
+  left_join(redcap_sup_gisx78, by = "record_id") %>%
   mutate(promis_gisx78 = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
                                 promis_gisx78, NA))
 #t score and se
@@ -2549,16 +2555,37 @@ redcap <- redcap %>%
   mutate(bl_urine_ml = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
                       bl_urine_ml, NA))
 
-#count of responses urine measurements
-redcap_subset <- redcap %>%
-  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
-  select(record_id, Group, bl_urine_ml, vbt_flag)
-redcap_subset %>%
-  filter(vbt_flag == 0) %>%
-  group_by(Group) %>%
-  summarise(
-    na_bl_urine_ml = sum(!is.na(bl_urine_ml))
-  )
+#count of responses urine measurements, uncommment to view
+#redcap_subset <- redcap %>%
+#  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+#  select(record_id, Group, bl_urine_ml, vbt_flag)
+#redcap_subset %>%
+#  filter(vbt_flag == 0) %>%
+#  group_by(Group) %>%
+#  summarise(
+#    na_bl_urine_ml = sum(!is.na(bl_urine_ml))
+#  )
+
+#merge in in-person bladder test fu pain from sup vars
+redcap_sup_ipb <- redcap_sup_vars %>%
+  filter(redcap_event_name == "inperson_visit__ba_arm_1") %>%
+  select(record_id, ipb_fupain)
+
+redcap <- redcap %>%
+  left_join(redcap_sup_ipb, by = "record_id") %>%
+  mutate(ipb_fupain = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                             ipb_fupain, NA))
+
+#count of responses ipb_fupain, uncommment to view
+#redcap_subset <- redcap %>%
+#  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+#  select(record_id, Group, ipb_fupain, vbt_flag)
+#redcap_subset %>%
+#  filter(vbt_flag == 0) %>%
+#  group_by(Group) %>%
+#  summarise(
+#    ipb_fupain = sum(!is.na(ipb_fupain))
+#  )
 
 #saving file
 write_csv(redcap, "Edited data files/redcap_post_supplementary_vars.csv") 
