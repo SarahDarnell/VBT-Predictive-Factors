@@ -8,6 +8,7 @@ library(flextable)
 library(officer)
 library(stringr)
 library(readxl)
+library(tibble)
 
 #set working directory
 setwd("~/Sarah work stuff/2025 Data Projects/VBT Predictive Factors CRAMPP2")
@@ -26,35 +27,255 @@ redcap <- redcap %>%
   mutate(Age = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
                       Age, NA))
 
+###############################################
+##Initial Cleaning - Groups and bladder times##
+###############################################
+
 #remove invalid records (see analysis notes)
 redcap <- redcap %>%
   filter(record_id != 1154)
+
+#time between finishing drinking and FS
+redcap <- redcap %>%
+  mutate(time_drinking_fs_mins = as.numeric(vbt_fs_time - vbt_time_drinking)/60,
+          time_drinking_fs_mins = ifelse(time_drinking_fs_mins < 0, 
+                                        time_drinking_fs_mins + 1440, 
+                                        time_drinking_fs_mins))
+
+#time bwtn drinking and FU
+redcap <- redcap %>%
+  mutate(time_drinking_fu_mins = as.numeric(vbt_fu_time - vbt_time_drinking)/60,
+         time_drinking_fu_mins = ifelse(time_drinking_fu_mins < 0, 
+                                        time_drinking_fu_mins + 1440, 
+                                        time_drinking_fu_mins))
+
+#time between drinking and mt
+redcap <- redcap %>%
+  mutate(time_drinking_mt_mins = as.numeric(vbt_mt_time - vbt_time_drinking)/60,
+         time_drinking_mt_mins = ifelse(time_drinking_mt_mins < 0, 
+                                        time_drinking_mt_mins + 1440, 
+                                        time_drinking_mt_mins))
+
+#time bwtn drinking and cap out
+redcap <- redcap %>%
+  mutate(time_drinking_cap_mins = as.numeric(vbt_cap_out_time - vbt_time_drinking)/60,
+         time_drinking_cap_mins = ifelse(time_drinking_cap_mins < 0, 
+                                         time_drinking_cap_mins + 1440, 
+                                         time_drinking_cap_mins))
+
+#flag for negative times, very fast, or total times that are over 150 mins
+redcap_flag <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  rowwise() %>%
+  mutate(
+    vbt_flag = any(c(time_drinking_fs_mins, time_drinking_fu_mins, time_drinking_mt_mins, time_drinking_cap_mins) < 0, na.rm = TRUE) |
+      any(c(time_drinking_fs_mins, time_drinking_fu_mins, time_drinking_mt_mins, time_drinking_cap_mins) > 150, na.rm = TRUE) |
+      all(is.na(c(time_drinking_fs_mins, time_drinking_fu_mins, time_drinking_mt_mins, time_drinking_cap_mins))) |
+      any(c(time_drinking_cap_mins, time_drinking_mt_mins) < 5, na.rm = TRUE)
+  ) %>%
+  ungroup()%>%
+  select(1, 313)
+
+redcap <- redcap %>%
+  left_join(
+    redcap_flag,
+    by = "record_id"
+  ) %>%
+  mutate(
+    vbt_flag = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                      vbt_flag, NA_real_)
+  )
+
+#sub-setting key group and key bladder vars to double check flags
+redcap_key <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  select(record_id, group_arm2, vbt_time_drinking, time_drinking_fs_mins, vbt_fs_time,
+         vbt_fs_pain, time_drinking_fu_mins, vbt_fu_time, vbt_fu_pain,
+         time_drinking_mt_mins, vbt_mt_time, vbt_mt_pain, time_drinking_cap_mins, 
+         time_drinking_cap_mins, vbt_cap_out_time, vbt_flag)
+
+#flag results, 4/24/26 - 18 flagged, details below for keep vs throw out
+#146: throw out - all times blank
+#307: throw out - finished in 1 minute
+#759: keep - drinking, fs, and fu times entered as 0900 when meant 2100
+redcap <- redcap %>%
+  mutate(time_drinking_mt_mins = ifelse(record_id == "759", 73, time_drinking_mt_mins))
+#782: throw out - nonsensical times
+#811: keep - drinking time meant to be 11pm instead of 12am
+redcap <- redcap %>%
+  mutate(time_drinking_fs_mins = ifelse(record_id == "811", 24, time_drinking_fs_mins),
+         time_drinking_fu_mins = ifelse(record_id == "811", 54, time_drinking_fu_mins), 
+         time_drinking_mt_mins = ifelse(record_id == "811", 97, time_drinking_mt_mins))
+#830: throw out - finished in 2 minutes
+#865: keep - drinking time meant to be 18:01 instead of 16:01 
+redcap <- redcap %>%
+  mutate(time_drinking_fs_mins = ifelse(record_id == "865", 17, time_drinking_fs_mins),
+         time_drinking_fu_mins = ifelse(record_id == "865", 40, time_drinking_fu_mins), 
+         time_drinking_mt_mins = ifelse(record_id == "865", 56, time_drinking_mt_mins))
+#1723: throw out - didn't finish task, times are off
+#1789: throw out - finished in 1 minute
+#1806: keep - drinking time meant to be 13:15 instead of 01:15
+redcap <- redcap %>%
+  mutate(time_drinking_fs_mins = ifelse(record_id == "1806", 25, time_drinking_fs_mins),
+         time_drinking_fu_mins = ifelse(record_id == "1806", 45, time_drinking_fu_mins), 
+         time_drinking_mt_mins = ifelse(record_id == "1806", 54, time_drinking_mt_mins))
+#1939: keep - drinking time meant to be 20:19 instead of 08:19
+redcap <- redcap %>%
+  mutate(time_drinking_fs_mins = ifelse(record_id == "1939", 18, time_drinking_fs_mins),
+         time_drinking_fu_mins = ifelse(record_id == "1939", 28, time_drinking_fu_mins), 
+         time_drinking_mt_mins = ifelse(record_id == "1939", 36, time_drinking_mt_mins))
+#1959: keep - drinking time meant to be 14:50 instead of 02:50
+redcap <- redcap %>%
+  mutate(time_drinking_fs_mins = ifelse(record_id == "1959", 20, time_drinking_fs_mins),
+         time_drinking_fu_mins = ifelse(record_id == "1959", 54, time_drinking_fu_mins), 
+         time_drinking_mt_mins = ifelse(record_id == "1959", 62, time_drinking_mt_mins))
+#2128: keep - drinking time meant to be 20:25 instead of 08:25
+redcap <- redcap %>%
+  mutate(time_drinking_fs_mins = ifelse(record_id == "2128", 30, time_drinking_fs_mins),
+         time_drinking_fu_mins = ifelse(record_id == "2128", 44, time_drinking_fu_mins), 
+         time_drinking_mt_mins = ifelse(record_id == "2128", 84, time_drinking_mt_mins),
+         time_drinking_cap_mins = ifelse(record_id == "2128", NA, time_drinking_cap_mins))
+#2475: throw out - nonsensical times and ratings
+#2509: both - FS and FU done correctly (keep), MT and cap out done past time (throw)
+redcap <- redcap %>%
+  mutate(time_drinking_mt_mins = ifelse(record_id == "2509", NA, time_drinking_mt_mins),
+         vbt_mt_pain = ifelse(record_id == "2509", NA, vbt_mt_pain),
+         vbt_mt_urgency = ifelse(record_id == "2509", NA, vbt_mt_urgency),
+         vbt_sharp = ifelse(record_id == "2509", NA, vbt_sharp),
+         vbt_pressing = ifelse(record_id == "2509", NA, vbt_pressing),
+         time_drinking_cap_mins = ifelse(record_id == "2509", NA, time_drinking_cap_mins))
+#2276: throw out - finished task in 4 minutes
+#2926: keep - drinking time meant to be 21:58 instead of 09:58
+redcap <- redcap %>%
+  mutate(time_drinking_fs_mins = ifelse(record_id == "2926", 61, time_drinking_fs_mins),
+         time_drinking_fu_mins = ifelse(record_id == "2926", 61, time_drinking_fu_mins), 
+         time_drinking_mt_mins = ifelse(record_id == "2926", 110, time_drinking_mt_mins))
+#2962: throw - finished task in 1 minute
+
+#re-run flag for negative times, very fast, or total times that are over 150 mins
+redcap <- redcap %>%
+  select(-313)
+
+#flag for negative times, very fast, or total times that are over 150 mins
+redcap_flag <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  rowwise() %>%
+  mutate(
+    vbt_flag = any(c(time_drinking_fs_mins, time_drinking_fu_mins, time_drinking_mt_mins, time_drinking_cap_mins) < 0, na.rm = TRUE) |
+      any(c(time_drinking_fs_mins, time_drinking_fu_mins, time_drinking_mt_mins, time_drinking_cap_mins) > 150, na.rm = TRUE) |
+      all(is.na(c(time_drinking_fs_mins, time_drinking_fu_mins, time_drinking_mt_mins, time_drinking_cap_mins))) |
+      any(c(time_drinking_cap_mins, time_drinking_mt_mins) < 5, na.rm = TRUE)
+  ) %>%
+  ungroup()%>%
+  select(1, 313)
+
+redcap <- redcap %>%
+  left_join(
+    redcap_flag,
+    by = "record_id"
+  ) %>%
+  mutate(
+    vbt_flag = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                      vbt_flag, NA_real_)
+  )
+
+#dummy var for cap out - if MT has time, remove cap out time
+redcap <- redcap %>%
+  mutate(capped_out = case_when(
+    redcap_event_name == "virtual_assessment_arm_1" & is.na(vbt_cap_out_time) ~ 0,
+    redcap_event_name == "virtual_assessment_arm_1" & !is.na(vbt_cap_out_time) &
+      time_drinking_mt_mins < 150 ~ 0, 
+    redcap_event_name == "virtual_assessment_arm_1" & !is.na(vbt_cap_out_time) &
+      time_drinking_mt_mins > 150 | is.na(time_drinking_mt_mins) ~ 1, 
+    .default = NA
+  ))
+
+#MT urgency and pain, throw out anyone who capped out
+redcap <- redcap %>%
+  mutate(vbt_mt_urgency = case_when(
+    capped_out == 0 ~ vbt_mt_urgency, 
+    capped_out == 1 ~ NA
+  )) %>%
+  mutate(vbt_mt_pain = case_when(
+    capped_out == 0 ~ vbt_mt_pain, 
+    capped_out == 1 ~ NA
+  ))
+
+#add group to other rows
+redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(
+    group_arm2 = first(na.omit(group_arm2)), 
+    group_arm2 = case_match(
+      group_arm2, 
+      1 ~ "Dysmenorrhea", 
+      2 ~ "Pain Free Control", 
+      3 ~ "Dysmenorrhea plus Bladder Pain", 
+      4 ~ "CP"
+    )) %>%
+  ungroup() 
+
+#define groups based of FU and MT pain 
+redcap <- redcap %>%  
+  mutate(Group = case_when(
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      group_arm2 == "Pain Free Control" ~ "Pain Free Control",
+    redcap_event_name == "virtual_assessment_arm_1" &
+      group_arm2 != "Pain Free Control" &
+      vbt_fu_pain < 16  | 
+      (is.na(vbt_fu_pain) & vbt_mt_pain < 16) ~ "Dysmenorrhea", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      group_arm2 != "Pain Free Control" &
+      vbt_fu_pain > 15 | 
+      (is.na(vbt_fu_pain) & vbt_mt_pain > 25) ~ "Dysmenorrhea plus Bladder Pain", 
+    redcap_event_name == "virtual_assessment_arm_1" &
+      group_arm2 != "Pain Free Control" &
+      is.na(vbt_fu_pain) & 
+      is.na(vbt_mt_pain) ~ "Unsuable",
+    redcap_event_name == "virtual_assessment_arm_1" &
+      group_arm2 != "Pain Free Control" &
+      is.na(vbt_fu_pain) & 
+      vbt_mt_pain > 15 & 
+      vbt_mt_pain < 26 ~ "Grey zone"
+  )) 
+
+#flag rows where group_arm2 doesn't match groups above
+redcap <- redcap %>%
+  mutate(group_mismatch = case_when(
+    redcap_event_name == "virtual_assessment_arm_1" &
+      group_arm2 == Group ~ 0, 
+    redcap_event_name == "virtual_assessment_arm_1" &
+      group_arm2 != Group ~ 1
+  ))
+
+#visually inspect
+redcap_groups <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  select(record_id, group_arm2, Group, group_mismatch, vbt_flag, vbt_fu_pain, vbt_mt_pain)
+
+#add group and vbt flag to other rows
+redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(
+    Group = first(na.omit(Group)),
+    vbt_flag = first(na.omit(vbt_flag))) %>%
+  ungroup()
+
+#remove rows with flagged vbts or groups that are unusable or grey zone
+redcap <- redcap %>%
+  filter(vbt_flag == 0 & 
+           (Group == "Dysmenorrhea" | 
+              Group == "Dysmenorrhea plus Bladder Pain" | 
+              Group == "Pain Free Control"))
+
+#save cleaned dataset
+write_csv(redcap, "Edited data files/redcap_post_cleaning.csv")  
 
 #########################
 ##Table 1: Demographics##
 #########################
 
 #recode variables
-#group, and also add to the other events 
-redcap <- redcap %>%
-  group_by(record_id) %>%
-  mutate(
-    group_arm2 = first(na.omit(group_arm2))
-  ) %>%
-  ungroup() %>%
-  mutate(group_arm2 = case_match(
-    group_arm2, 
-    1 ~ "Dysmenorrhea", 
-    2 ~ "Pain Free Control", 
-    3 ~ "Dysmenorrhea plus Bladder Pain"
-  )) %>%
-  rename(Group = group_arm2)
-#assigned sex
-redcap <- redcap %>%
-  mutate(mh_assigned_sex = case_match(
-    mh_assigned_sex, 
-    1 ~ "Female"
-  )) 
 #gender
 redcap <- redcap %>%
   mutate(multi_gender = ifelse(rowSums(
@@ -119,7 +340,7 @@ redcap <- redcap %>%
     mh4_ethnicity, 
     1 ~ "Hispanic or Latino", 
     2 ~ "Not Hispanic or Latino", 
-    3 ~ "Uknown"
+    3 ~ "Unknown"
   )) 
 #education
 redcap <- redcap %>%
@@ -220,23 +441,22 @@ write_csv(redcap, "Edited data files/redcap_post_table1.csv")
 redcap_table1 <- redcap %>%
   filter(redcap_event_name == "virtual_assessment_arm_1") %>%
   rename(
-    `Assigned Sex at Birth` = mh_assigned_sex, 
     Ethnicity = mh4_ethnicity, 
     Education = mh5_education, 
     `Nicotine Usage` = mh_smoking, 
     `THC (Marijuana) Usage` = ms_thc, 
-    `Have you ever had a problem with drugs or alcohol?` = mh9b1, 
+    `Ever had a problem with drugs or alcohol` = mh9b1, 
     `Given Birth` = birth_yn,
     Income = mh_income
   )
 
-vars <- c("Age", "Assigned Sex at Birth", "Gender", "Race", "Ethnicity", 
+vars <- c("Age", "Gender", "Race", "Ethnicity", 
           "Education", "Employment", "Income", "Given Birth", "Nicotine Usage", "THC (Marijuana) Usage", 
-          "Have you ever had a problem with drugs or alcohol?")
-factor_vars <- c("Assigned Sex at Birth", "Gender", "Race", "Ethnicity", 
+          "Ever had a problem with drugs or alcohol")
+factor_vars <- c("Gender", "Race", "Ethnicity", 
                  "Education", "Employment", "Income", "Given Birth", 
                  "Nicotine Usage", "THC (Marijuana) Usage", 
-                 "Have you ever had a problem with drugs or alcohol?")
+                 "Ever had a problem with drugs or alcohol")
 
 
 #Creating table
@@ -248,162 +468,45 @@ demo_df <- as.data.frame(print(demo,
                                printToggle = FALSE,
                                quote = FALSE,
                                noSpaces = TRUE,
-                               showAllLevels = TRUE))
+                               showAllLevels = FALSE))
+
+#clean up
+demo_df <- demo_df %>%
+  rownames_to_column("Variable")
+
+demo_df <- demo_df %>%
+  mutate(Variable = gsub("\\.\\.\\.", " ", Variable), # replace ... with space
+         Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
+         Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
+         Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
+         Variable = trimws(Variable))                 # trim extra whitespace
 
 # Remove p-value/test columns
 cols_to_remove <- c("p", "test")
 demo_df <- demo_df[, !colnames(demo_df) %in% cols_to_remove]
 
-#Step 1: save rownames as a column
-demo_df <- data.frame(rowname = rownames(demo_df), demo_df, row.names = NULL)
-
-# Step 2: Create an empty output data frame
-restructured_df <- data.frame()
-
-# Step 3: Loop through rows and insert variable name before its levels
-current_var <- NA
-
-for (i in seq_len(nrow(demo_df))) {
-  row_label <- demo_df$rowname[i]
-  if (!startsWith(row_label, "  ")) {
-    # Continuous variable row — use as is
-    current_var <- row_label
-    new_row <- demo_df[i, ]
-    new_row$Variable <- current_var
-    restructured_df <- bind_rows(restructured_df, new_row)
-  } else {
-    # Categorical level — insert variable name row if not already added
-    if (!identical(tail(restructured_df$Variable, 1), current_var)) {
-      var_row <- demo_df[i, ]
-      var_row[2:ncol(var_row)] <- ""  # clear values
-      var_row$Variable <- current_var
-      restructured_df <- bind_rows(restructured_df, var_row)
-    }
-    level_row <- demo_df[i, ]
-    level_row$Variable <- ""
-    restructured_df <- bind_rows(restructured_df, level_row)
-  }
-}
-
-# Step 4: Drop original rowname and reorder
-restructured_df <- restructured_df[, c("Variable", setdiff(names(restructured_df), c("rowname", "Variable")))]
-
 
 #building flextable
-ft <- flextable(demo_df) %>%
-  bold(i = which(demo_df$Variable != ""), j = 1) %>%      # Bold variable rows
-  align(align = "left", part = "all") %>%                 # Align left
-  fontsize(size = 9, part = "all") %>%                    # Reduce font size
-  set_table_properties(layout = "fixed", width = 1) %>%   # Fixed width layout
-  width(j = 1, width = 2.25) %>%                          # Widen first column for variable names
-  width(j = 2:ncol(demo_df), width = 1.25) %>%            # Narrow group columns
-  theme_vanilla()
+demo_ft <- flextable(demo_df) %>%
+  set_header_labels(Variable = "") %>%        # removes "Variable" header
+  autofit() %>%                               # fits column widths to content
+  bold(part = "header") %>%                   # bold header row
+  hline_top(part = "header", 
+            border = fp_border(width = 1.5)) %>%   # line above header
+  hline_bottom(part = "header", 
+               border = fp_border(width = 1.5)) %>% # line below header
+  hline_bottom(part = "body", 
+               border = fp_border(width = 1.5)) %>% # line at bottom
+  font(fontname = "Arial", part = "all") %>%
+  fontsize(size = 9, part = "all")
 
-read_docx() %>%
-  body_add_flextable(ft) %>%
-  print(target = "Tables/Updated/VBT_Predictive_Factors_Table1.docx")
+save_as_docx(demo_ft, path = "Tables/Final/Table1_demographics.docx")
 
 ######################################################################
 ##Table 2: Menstrual Pain Characteristics and Hormonal Therapy Usage##
 ######################################################################
 
 #recode variables
-#ocps
-redcap <- redcap %>%
-  mutate(mh_ocps = case_when(
-    mh_ocps == 1 ~ "Currently taking",
-    mh_ocps == 2 ~ "Have taken in the past",
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_ocps) ~ "Have never taken"
-  )) 
-#patch
-redcap <- redcap %>%
-  mutate(mh_patch = case_when(
-    mh_patch == 1 ~ "Currently taking",
-    mh_patch == 2 ~ "Have taken in the past",
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_patch) ~ "Have never taken"
-  )) 
-#ring
-redcap <- redcap %>%
-  mutate(mh_ring = case_when(
-    mh_ring == 1 ~ "Currently taking",
-    mh_ring == 2 ~ "Have taken in the past",
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_ring) ~ "Have never taken"
-  )) 
-#implant
-redcap <- redcap %>%
-  mutate(mh_implant = case_when(
-    mh_implant == 1 ~ "Currently taking",
-    mh_implant == 2 ~ "Have taken in the past",
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_implant) ~ "Have never taken"
-  )) 
-#shot
-redcap <- redcap %>%
-  mutate(mh_shot = case_when(
-    mh_shot == 1 ~ "Currently taking",
-    mh_shot == 2 ~ "Have taken in the past",
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_shot) ~ "Have never taken"
-  )) 
-#pills
-redcap <- redcap %>%
-  mutate(mh_p_pills = case_when(
-    mh_p_pills == 1 ~ "Currently taking",
-    mh_p_pills == 2 ~ "Have taken in the past",
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_p_pills) ~ "Have never taken"
-  )) 
-#gnrh agonist
-redcap <- redcap %>%
-  mutate(mh_gnrh_agonist = case_when(
-    mh_gnrh_agonist == 1 ~ "Currently taking",
-    mh_gnrh_agonist == 2 ~ "Have taken in the past",
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_gnrh_agonist) ~ "Have never taken"
-  ))
-#gnrh antagonist
-redcap <- redcap %>%
-  mutate(mh_gnrh_antagonist = case_when(
-    mh_gnrh_antagonist == 1 ~ "Currently taking",
-    mh_gnrh_antagonist == 2 ~ "Have taken in the past",
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_gnrh_antagonist) ~ "Have never taken"
-  )) 
-#hormonal iud
-redcap <- redcap %>%
-  mutate(mh_iudh = case_when(
-    mh_iudh == 1 ~ "Currently taking",
-    mh_iudh == 2 ~ "Have taken in the past",
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_iudh) ~ "Have never taken"
-  )) 
-#copper iud
-redcap <- redcap %>%
-  mutate(mh_iudc = case_when(
-    mh_iudc == 1 ~ "Currently taking",
-    mh_iudc == 2 ~ "Have taken in the past",
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_iudc) ~ "Have never taken"
-  ))
-#Aromatase
-redcap <- redcap %>%
-  mutate(mh_aromatase = case_when(
-    mh_aromatase == 1 ~ "Currently taking",
-    mh_aromatase == 2 ~ "Have taken in the past",
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_aromatase) ~ "Have never taken"
-  )) 
-#other
-redcap <- redcap %>%
-  mutate(mh_hormonal_other = case_when(
-    mh_hormonal_other == 1 ~ "Currently taking",
-    mh_hormonal_other == 2 ~ "Have taken in the past",
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_hormonal_other) ~ "Have never taken"
-  ))
 #period in last 6 months
 redcap <- redcap %>%
   mutate(mh_period_6months = case_match(
@@ -468,7 +571,7 @@ redcap <- redcap %>%
     `day of cycle` = floor(abs(as.numeric(difftime(
       vbt_instructions_and_urgency_zones_timestamp, mh26, units = "days"))))
   ) %>%
-  mutate(`Menstrual Cycle Phase` = case_when(
+  mutate(`Menstrual Cycle Phase at time of Assessment` = case_when(
     `day of cycle` <= 14 ~ "Follicular Phase", 
     `day of cycle` >= 15 ~ "Luteal Phase"
   ))
@@ -493,25 +596,16 @@ redcap <- redcap %>%
     1 ~ "Yes", 
     0 ~ "No"
   ))
-#tampon test pain 
-redcap <- redcap %>%
-  mutate(tampon_test = case_when(
-    tampon_test == 99 ~ NA, 
-    tampon_test == 0 ~ 0,
-    tampon_test == 10 ~ 10, 
-    TRUE ~ tampon_test
-  ))
 
-#count of responses for mh23a, mh27b and tampon test, uncomment to view
+#count of responses for mh23a and mh27b, uncomment to view
 #redcap_subset <- redcap %>%
 #  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
-#  select(record_id, Group, mh23a, mh27b, tampon_test)
+#  select(record_id, Group, mh23a, mh27b)
 #redcap_subset %>%
 #  group_by(Group) %>%
 #  summarise(
-#    na_mh23a = sum(!is.na(mh23a)),
-#    na_mh27b = sum(!is.na(mh27b)),
-#    na_tampon_test = sum(!is.na(tampon_test))
+#    mh23a = sum(!is.na(mh23a)),
+#    mh27b = sum(!is.na(mh27b))
 #  )
 
 #saving file
@@ -521,18 +615,6 @@ write_csv(redcap, "Edited data files/redcap_post_table2.csv")
 redcap_table2 <- redcap %>%
   filter(redcap_event_name == "virtual_assessment_arm_1") %>%
   rename(
-    `Oral Contraceptive Pills` = mh_ocps,
-    `Contraceptive Patch` = mh_patch,
-    `Vaginal Ring` = mh_ring,
-    `Progestin Implant` = mh_implant,
-    `Progestin Shot` = mh_shot,
-    `Progestin Pills` = mh_p_pills,
-    `GnRH Agonists` = mh_gnrh_agonist,
-    `GnRH Antagonists` = mh_gnrh_antagonist,
-    `Hormonal IUD` = mh_iudh,
-    `Copper IUD` = mh_iudc,
-    `Aromatase Inhibitors` = mh_aromatase,
-    `Other Hormonal Medication` = mh_hormonal_other,
     `Period in the last 6 months?` = mh_period_6months,
     `Ever had painful periods?` = mh18_painfulperiodsyn,
     `Painful periods at time of menarche?` = mh19,
@@ -547,16 +629,11 @@ redcap_table2 <- redcap %>%
     `Menstrual Cycle Regularity` = mh24,
     `Menstrual Cycle Length` = mh25,
     `Average bleeding days per period` = mh27,
-    `Used hormonal therpary to treat menstrual pain` = mh28,
-    `Bladder, bowel, or abdomino-pelvic pain outside of period in last 3 months` = mh30,
-    `Pain with tampon test` = tampon_test
+    `Used hormonal therapy to treat menstrual pain` = mh28,
+    `Bladder, bowel, or abdomino-pelvic pain outside of period in last 3 months` = mh30
   )
 
-vars <- c("Oral Contraceptive Pills", "Contraceptive Patch", "Vaginal Ring", 
-          "Progestin Implant", "Progestin Shot", "Progestin Pills", 
-          "GnRH Agonists", "GnRH Antagonists", "Hormonal IUD", "Copper IUD", 
-          "Aromatase Inhibitors", "Other Hormonal Medication", 
-          "Period in the last 6 months?", "Ever had painful periods?", 
+vars <- c("Period in the last 6 months?", "Ever had painful periods?", 
           "Painful periods at time of menarche?", 
           "What age did your painful periods start, if not menarche?", 
           "Years since menarche without a period", 
@@ -567,18 +644,13 @@ vars <- c("Oral Contraceptive Pills", "Contraceptive Patch", "Vaginal Ring",
           "Average pain during worst day of period when taking NSAID pain relievers in last 3 months (VAS)", 
           "Average pain during worst day of period when taking acetaminophen pain relievers in last 3 months (VAS)", 
           "Menstrual Cycle Regularity", "Menstrual Cycle Length", 
-          "Menstrual Cycle Phase", "Average bleeding days per period", 
+          "Menstrual Cycle Phase at time of Assessment", "Average bleeding days per period", 
           "Used hormonal therpary to treat menstrual pain", 
-          "Bladder, bowel, or abdomino-pelvic pain outside of period in last 3 months", 
-          "Pain with tampon test")
+          "Bladder, bowel, or abdomino-pelvic pain outside of period in last 3 months")
 
-factor_vars <- c("Oral Contraceptive Pills", "Contraceptive Patch", "Vaginal Ring", 
-                 "Progestin Implant", "Progestin Shot", "Progestin Pills", 
-                 "GnRH Agonists", "GnRH Antagonists", "Hormonal IUD", "Copper IUD", 
-                 "Aromatase Inhibitors", "Other Hormonal Medication", 
-                 "Period in the last 6 months?", "Ever had painful periods?", 
+factor_vars <- c("Period in the last 6 months?", "Ever had painful periods?", 
                  "Painful periods at time of menarche?", "Menstrual Cycle Regularity", 
-                 "Menstrual Cycle Length", "Menstrual Cycle Phase",
+                 "Menstrual Cycle Length", "Menstrual Cycle Phase at time of Assessment",
                   "Used hormonal therpary to treat menstrual pain", 
                   "Bladder, bowel, or abdomino-pelvic pain outside of period in last 3 months")
 
@@ -589,18 +661,21 @@ sum <- CreateTableOne(vars, data = redcap_table2, factorVars = factor_vars,
 sum_df <- as.data.frame(print(sum, 
                                nonnormal = c("What age did your painful periods start, if not menarche?",
                                              "Years since menarche without a period",
+                                             "Average bleeding days per period",
                                              "Days with menstrual pelvic pain >= 4 in an average month", 
                                              "Days of missed work, school, or activities due to painful period in last 3 months", 
                                              "Days spent in bed due to painful period in last 3 months",
                                              "Average pain during worst day of period when not taking pain relievers in last 3 months (VAS)",
                                              "Average pain during worst day of period when taking NSAID pain relievers in last 3 months (VAS)",
-                                             "Average pain during worst day of period when taking acetaminophen pain relievers in last 3 months (VAS)", 
-                                             "Pain with tampon test"),
+                                             "Average pain during worst day of period when taking acetaminophen pain relievers in last 3 months (VAS)"),
                                printToggle = FALSE,
                                quote = FALSE,
                                noSpaces = TRUE,
-                               showAllLevels = TRUE, 
-                               pValues = FALSE))
+                               showAllLevels = FALSE))
+
+# Remove test columns
+cols_to_remove <- "test"
+sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
 
 #Creating table with comparisons for DYS and DYSB
 redcap_table2_p <- redcap_table2 %>%
@@ -612,72 +687,49 @@ comp <- CreateTableOne(vars, data = redcap_table2_p, factorVars = factor_vars,
 comp_df <- as.data.frame(print(comp, 
                                nonnormal = c("What age did your painful periods start, if not menarche?",
                                              "Years since menarche without a period",
+                                             "Average bleeding days per period",
                                              "Days with menstrual pelvic pain >= 4 in an average month", 
                                              "Days of missed work, school, or activities due to painful period in last 3 months", 
                                              "Days spent in bed due to painful period in last 3 months",
                                              "Average pain during worst day of period when not taking pain relievers in last 3 months (VAS)",
                                              "Average pain during worst day of period when taking NSAID pain relievers in last 3 months (VAS)",
-                                             "Average pain during worst day of period when taking acetaminophen pain relievers in last 3 months (VAS)", 
-                                             "Pain with tampon test"),
+                                             "Average pain during worst day of period when taking acetaminophen pain relievers in last 3 months (VAS)"),
                                printToggle = FALSE,
                                quote = FALSE,
                                noSpaces = TRUE,
-                               showAllLevels = TRUE, 
+                               showAllLevels = FALSE, 
                                pValues = TRUE)) %>%
   dplyr::select("p")
 
 #merge summary and comparison tables
 table2 <- cbind(sum_df, p_dys_dysb = comp_df$p )
 
-#reformat and save table
-#Step 1: save rownames as a column
-table2 <- data.frame(rowname = rownames(table2), table2, row.names = NULL)
+#clean up
+table2 <- table2 %>%
+  rownames_to_column("Variable")
 
-# Step 2: Create an empty output data frame
-restructured_df <- data.frame()
-
-# Step 3: Loop through rows and insert variable name before its levels
-current_var <- NA
-
-for (i in seq_len(nrow(table2))) {
-  row_label <- table2$rowname[i]
-  if (!startsWith(row_label, "  ")) {
-    # Continuous variable row — use as is
-    current_var <- row_label
-    new_row <- table2[i, ]
-    new_row$Variable <- current_var
-    restructured_df <- bind_rows(restructured_df, new_row)
-  } else {
-    # Categorical level — insert variable name row if not already added
-    if (!identical(tail(restructured_df$Variable, 1), current_var)) {
-      var_row <- table2[i, ]
-      var_row[2:ncol(var_row)] <- ""  # clear values
-      var_row$Variable <- current_var
-      restructured_df <- bind_rows(restructured_df, var_row)
-    }
-    level_row <- table2[i, ]
-    level_row$Variable <- ""
-    restructured_df <- bind_rows(restructured_df, level_row)
-  }
-}
-
-# Step 4: Drop original rowname and reorder
-restructured_df <- restructured_df[, c("Variable", setdiff(names(restructured_df), c("rowname", "Variable")))]
-
+table2 <- table2 %>%
+  mutate(Variable = gsub("\\.\\.\\.", " ", Variable), # replace ... with space
+         Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
+         Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
+         Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
+         Variable = trimws(Variable))                 # trim extra whitespace
 
 #building flextable
-ft <- flextable(table2) %>%
-  bold(i = which(table2$Variable != ""), j = 1) %>%      # Bold variable rows
-  align(align = "left", part = "all") %>%                 # Align left
-  fontsize(size = 9, part = "all") %>%                    # Reduce font size
-  set_table_properties(layout = "fixed", width = 1) %>%   # Fixed width layout
-  width(j = 1, width = 2.25) %>%                          # Widen first column for variable names
-  width(j = 2:ncol(table2), width = 1.25) %>%            # Narrow group columns
-  theme_vanilla()
+table2 <- flextable(table2) %>%
+  set_header_labels(Variable = "") %>%        # removes "Variable" header
+  autofit() %>%                               # fits column widths to content
+  bold(part = "header") %>%                   # bold header row
+  hline_top(part = "header", 
+            border = fp_border(width = 1.5)) %>%   # line above header
+  hline_bottom(part = "header", 
+               border = fp_border(width = 1.5)) %>% # line below header
+  hline_bottom(part = "body", 
+               border = fp_border(width = 1.5)) %>% # line at bottom
+  font(fontname = "Arial", part = "all") %>%
+  fontsize(size = 9, part = "all")
 
-read_docx() %>%
-  body_add_flextable(ft) %>%
-  print(target = "Tables/Updated/VBT_Predictive_Factors_Table2.docx")
+save_as_docx(table2, path = "Tables/Final/Table2_menstrualpain.docx")
 
 ############################
 ##Table 3: Medical History##
@@ -722,20 +774,6 @@ redcap <- redcap %>%
     redcap_event_name == "virtual_assessment_arm_1" & 
       is.na(mh_dep) ~ "No"
   ))
-#diagnosed cancer
-redcap <- redcap %>%
-  mutate(mh_cancer = case_when(
-    mh_cancer == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_cancer) ~ "No"
-  ))
-#diagnosed ibs
-redcap <- redcap %>%
-  mutate(mh_ibs = case_when(
-    mh_ibs == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_ibs) ~ "No"
-  ))
 #diagnosed kidney stone
 redcap <- redcap %>%
   mutate(mh_kidney_stone = case_when(
@@ -757,118 +795,6 @@ redcap <- redcap %>%
     redcap_event_name == "virtual_assessment_arm_1" & 
       is.na(mh_fibroids) ~ "No"
   ))
-#diagnosed cysts
-redcap <- redcap %>%
-  mutate(mh_cysts = case_when(
-    mh_cysts == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_cysts) ~ "No"
-  ))
-#diagnosed PID
-redcap <- redcap %>%
-  mutate(mh_pid = case_when(
-    mh_pid == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_pid) ~ "No"
-  ))
-#diagnosed constipation
-redcap <- redcap %>%
-  mutate(mh_constipation = case_when(
-    mh_constipation == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_constipation) ~ "No"
-  ))
-#diagnosed diarrhea
-redcap <- redcap %>%
-  mutate(mh_diarrhea = case_when(
-    mh_diarrhea == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_diarrhea) ~ "No"
-  ))
-#diagnosed uti
-redcap <- redcap %>%
-  mutate(mh_uti = case_when(
-    mh_uti == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_uti) ~ "No"
-  ))
-#diagnosed vaginal infection
-redcap <- redcap %>%
-  mutate(mh_vag_infection = case_when(
-    mh_vag_infection == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_vag_infection) ~ "No"
-  ))
-#diagnosed child pelvic problem
-redcap <- redcap %>%
-  mutate(mh_child_pelvic = case_when(
-    mh_child_pelvic == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_child_pelvic) ~ "No"
-  ))
-#diagnosed heart condition
-redcap <- redcap %>%
-  mutate(mh_heart = case_when(
-    mh_heart == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_heart) ~ "No"
-  ))
-#diagnosed kidney condition
-redcap <- redcap %>%
-  mutate(mh_kidney = case_when(
-    mh_kidney == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_kidney) ~ "No"
-  ))
-#diagnosed lung condition
-redcap <- redcap %>%
-  mutate(mh_lung = case_when(
-    mh_lung == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_lung) ~ "No"
-  ))
-#diagnosed liver condition
-redcap <- redcap %>%
-  mutate(mh_liver = case_when(
-    mh_liver == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_liver) ~ "No"
-  ))
-#fibroid surg
-redcap <- redcap %>%
-  mutate(mh_fibroid_surg = case_when(
-    mh_fibroid_surg == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_fibroid_surg) ~ "No"
-  ))
-#cyst surg
-redcap <- redcap %>%
-  mutate(mh_cyst_surg = case_when(
-    mh_cyst_surg == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_cyst_surg) ~ "No"
-  ))
-#ovary surg
-redcap <- redcap %>%
-  mutate(mh_ovary_surg = case_when(
-    mh_ovary_surg == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_ovary_surg) ~ "No"
-  ))
-#vaginal surg
-redcap <- redcap %>%
-  mutate(mh_vaginal_surg = case_when(
-    mh_vaginal_surg == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_vaginal_surg) ~ "No"
-  ))
-#other pelvic surg
-redcap <- redcap %>%
-  mutate(mh_other_surg = case_when(
-    mh_other_surg == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_other_surg) ~ "No"
-  ))
 #acetaminophen use
 redcap <- redcap %>%
   mutate(mh_acetaminophen_yn = case_match(
@@ -876,15 +802,6 @@ redcap <- redcap %>%
     1 ~ "Yes", 
     0 ~ "No"
   ))
-#acetaminophen amounts
-redcap <- redcap %>%
-  mutate(mh_acetaminophen_amount = case_when(
-    mh_acetaminophen_amount == 1 ~ "1-2", 
-    mh_acetaminophen_amount == 2 ~ "3-5", 
-    mh_acetaminophen_amount == 3 ~ "6-14", 
-    mh_acetaminophen_amount == 4 ~ "15+", 
-    mh_acetaminophen_yn == "No" ~ "0"
-  )) 
 #ibuprofen use
 redcap <- redcap %>%
   mutate(mh_ibuprofen_yn = case_match(
@@ -892,15 +809,6 @@ redcap <- redcap %>%
     1 ~ "Yes", 
     0 ~ "No"
   ))
-#ibuprofen amounts
-redcap <- redcap %>%
-  mutate(mh_ibuprofen_amount = case_when(
-    mh_ibuprofen_amount == 1 ~ "1-2", 
-    mh_ibuprofen_amount == 2 ~ "3-5", 
-    mh_ibuprofen_amount == 3 ~ "6-14", 
-    mh_ibuprofen_amount == 4 ~ "15+", 
-    mh_ibuprofen_yn == "No" ~ "0"
-  )) 
 #other med use
 redcap <- redcap %>%
   mutate(mh_othermeds_yn = case_match(
@@ -908,42 +816,12 @@ redcap <- redcap %>%
     1 ~ "Yes", 
     0 ~ "No"
   ))
-#other med amounts
-redcap <- redcap %>%
-  mutate(mh_othermed_amount = case_when(
-    mh_othermed_amount == 1 ~ "1-2", 
-    mh_othermed_amount == 2 ~ "3-5", 
-    mh_othermed_amount == 3 ~ "6-14", 
-    mh_othermed_amount == 4 ~ "15+", 
-    mh_othermeds_yn == "No" ~ "0"
-  )) 
-#beta blocker use
-redcap <- redcap %>%
-  mutate(mh_betablocker = case_when(
-    mh_betablocker == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_betablocker) ~ "No"
-  ))
-#triptans use
-redcap <- redcap %>%
-  mutate(mh_triptans = case_when(
-    mh_triptans == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_triptans) ~ "No"
-  ))
 #antidepressants use
 redcap <- redcap %>%
   mutate(mh_antidepressants = case_when(
     mh_antidepressants == 1 ~ "Yes", 
     redcap_event_name == "virtual_assessment_arm_1" & 
       is.na(mh_antidepressants) ~ "No"
-  ))
-#tranq use
-redcap <- redcap %>%
-  mutate(mh_tranq = case_when(
-    mh_tranq == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_tranq) ~ "No"
   ))
 
 #saving file
@@ -953,66 +831,26 @@ write_csv(redcap, "Edited data files/redcap_post_table3.csv")
 redcap_table3 <- redcap %>%
   filter(redcap_event_name == "virtual_assessment_arm_1") %>%
   rename(
-    `Has Medical Insurace` = mh_insurance_yn,
+    `Has Medical Insurance` = mh_insurance_yn,
     `Has a Regular Physician` = mh_physician_yn, 
     `Diagnosed with anxiety` = mh_anx, 
     `Diagnosed with depression` = mh_dep, 
-    `Diagnosed with invasive cancer` = mh_cancer, 
-    `Diagnosed with IBS, Crohn's or Ulcerative Colitis` = mh_ibs, 
     `Diagnosed with kidney stones` = mh_kidney_stone, 
     `Diagnosed with endometriosis (w/o chronic pain)` = mh_endo,
     `Diagnosed with fibroids` = mh_fibroids, 
-    `Diagnosed with persistant ovarian cysts` = mh_cysts, 
-    `Diagnosed with pelvic inflammatory disease` = mh_pid, 
-    `Diagnosed with chronic constipation` = mh_constipation, 
-    `Diagnosed with chronic diarrhea` = mh_diarrhea, 
-    `Diagnosed with repeated UTIs` = mh_uti, 
-    `Diagnosed with repeated vaginal infections` = mh_vag_infection, 
-    `Diagnosed with childhood pelvic health problem` = mh_child_pelvic, 
-    `Diagnosed with chronic heart condition (needing treatment)` = mh_heart, 
-    `Diagnosed with chronic kidney condition (needing treatment)` = mh_kidney, 
-    `Diagnosed with chronic lung condition (needing treatment)` = mh_lung, 
-    `Diagnosed with chronic liver condition (needing treatment)` = mh_liver, 
-    `Fibroid removal surgery` = mh_fibroid_surg, 
-    `Ovarian cyst removal surgery` = mh_ovary_surg, 
-    `Vaginal surgery` = mh_vaginal_surg, 
-    `Other major pelvic surgery` = mh_other_surg, 
-    `Used acetaminophen regulary in past year to treat menstrual pain` = mh_acetaminophen_yn, 
-    `Number of acetaminophen tablets taken on average per period` = mh_acetaminophen_amount, 
-    `Used ibuprofen regulary in past year to treat menstrual pain` = mh_ibuprofen_yn, 
-    `Number of ibuprofen tablets taken on average per period` = mh_ibuprofen_amount, 
-    `Used other anti-inflammatory regulary in past year to treat menstrual pain` = mh_othermeds_yn, 
-    `Number of other anti-inflammatory tablets taken on average per period` = mh_othermed_amount, 
-    `Used beta-blockers regularly in past year (for any indication)` = mh_betablocker, 
-    `Used triptans regularly in past year (for any indication)` = mh_triptans,
-    `Used antidepressants regularly in past year (for any indication)` = mh_antidepressants, 
-    `Used minor tranquilizers regularly in past year (for any indication)` = mh_tranq
+    `Used acetaminophen regularly in past year to treat menstrual pain` = mh_acetaminophen_yn, 
+    `Used ibuprofen regularly in past year to treat menstrual pain` = mh_ibuprofen_yn, 
+    `Used other anti-inflammatory regularly in past year to treat menstrual pain` = mh_othermeds_yn, 
+    `Used antidepressants regularly in past year (for any indication)` = mh_antidepressants
   )
 
 vars = c("Has Medical Insurace", "Has a Regular Physician", "Diagnosed with anxiety", 
-         "Diagnosed with depression", "Diagnosed with invasive cancer", 
-         "Diagnosed with IBS, Crohn's or Ulcerative Colitis", "Diagnosed with kidney stones", 
+         "Diagnosed with depression", "Diagnosed with kidney stones", 
          "Diagnosed with endometriosis (w/o chronic pain)", "Diagnosed with fibroids", 
-         "Diagnosed with persistant ovarian cysts", "Diagnosed with pelvic inflammatory disease", 
-         "Diagnosed with chronic constipation", "Diagnosed with chronic diarrhea", 
-         "Diagnosed with repeated UTIs", "Diagnosed with repeated vaginal infections", 
-         "Diagnosed with childhood pelvic health problem", 
-         "Diagnosed with chronic heart condition (needing treatment)", 
-         "Diagnosed with chronic kidney condition (needing treatment)",
-         "Diagnosed with chronic lung condition (needing treatment)", 
-         "Diagnosed with chronic liver condition (needing treatment)", 
-         "Fibroid removal surgery", "Ovarian cyst removal surgery", "Vaginal surgery", 
-         "Other major pelvic surgery", 
          "Used acetaminophen regulary in past year to treat menstrual pain", 
-         "Number of acetaminophen tablets taken on average per period", 
          "Used ibuprofen regulary in past year to treat menstrual pain", 
-         "Number of ibuprofen tablets taken on average per period", 
          "Used other anti-inflammatory regulary in past year to treat menstrual pain", 
-         "Number of other anti-inflammatory tablets taken on average per period", 
-         "Used beta-blockers regularly in past year (for any indication)", 
-         "Used triptans regularly in past year (for any indication)", 
-         "Used antidepressants regularly in past year (for any indication)", 
-         "Used minor tranquilizers regularly in past year (for any indication)"
+         "Used antidepressants regularly in past year (for any indication)"
          )
 
 #Creating summary table 3
@@ -1023,8 +861,11 @@ sum_df <- as.data.frame(print(sum,
                               printToggle = FALSE,
                               quote = FALSE,
                               noSpaces = TRUE,
-                              showAllLevels = TRUE, 
-                              pValues = FALSE))
+                              showAllLevels = FALSE))
+
+# Remove test columns
+cols_to_remove <- "test"
+sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
 
 #Creating table with comparisons for DYS and DYSB
 redcap_table3_p <- redcap_table3 %>%
@@ -1037,62 +878,38 @@ comp_df <- as.data.frame(print(comp,
                                printToggle = FALSE,
                                quote = FALSE,
                                noSpaces = TRUE,
-                               showAllLevels = TRUE, 
-                               pValues = TRUE)) %>%
+                               showAllLevels = FALSE)) %>%
   dplyr::select("p")
 
 #merge summary and comparison tables
 table3 <- cbind(sum_df, p_dys_dysb = comp_df$p )
 
-#reformat and save table
-#Step 1: save rownames as a column
-table3 <- data.frame(rowname = rownames(table3), table3, row.names = NULL)
+#clean up
+table3 <- table3 %>%
+  rownames_to_column("Variable")
 
-# Step 2: Create an empty output data frame
-restructured_df <- data.frame()
-
-# Step 3: Loop through rows and insert variable name before its levels
-current_var <- NA
-
-for (i in seq_len(nrow(table3))) {
-  row_label <- table3$rowname[i]
-  if (!startsWith(row_label, "  ")) {
-    # Continuous variable row — use as is
-    current_var <- row_label
-    new_row <- table3[i, ]
-    new_row$Variable <- current_var
-    restructured_df <- bind_rows(restructured_df, new_row)
-  } else {
-    # Categorical level — insert variable name row if not already added
-    if (!identical(tail(restructured_df$Variable, 1), current_var)) {
-      var_row <- table3[i, ]
-      var_row[2:ncol(var_row)] <- ""  # clear values
-      var_row$Variable <- current_var
-      restructured_df <- bind_rows(restructured_df, var_row)
-    }
-    level_row <- table3[i, ]
-    level_row$Variable <- ""
-    restructured_df <- bind_rows(restructured_df, level_row)
-  }
-}
-
-# Step 4: Drop original rowname and reorder
-restructured_df <- restructured_df[, c("Variable", setdiff(names(restructured_df), c("rowname", "Variable")))]
-
+table3 <- table3 %>%
+  mutate(Variable = gsub("\\.\\.\\.", " ", Variable), # replace ... with space
+         Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
+         Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
+         Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
+         Variable = trimws(Variable))                 # trim extra whitespace
 
 #building flextable
-ft <- flextable(table3) %>%
-  bold(i = which(table3$Variable != ""), j = 1) %>%      # Bold variable rows
-  align(align = "left", part = "all") %>%                 # Align left
-  fontsize(size = 9, part = "all") %>%                    # Reduce font size
-  set_table_properties(layout = "fixed", width = 1) %>%   # Fixed width layout
-  width(j = 1, width = 2.25) %>%                          # Widen first column for variable names
-  width(j = 2:ncol(table3), width = 1.25) %>%            # Narrow group columns
-  theme_vanilla()
+table3 <- flextable(table3) %>%
+  set_header_labels(Variable = "") %>%        # removes "Variable" header
+  autofit() %>%                               # fits column widths to content
+  bold(part = "header") %>%                   # bold header row
+  hline_top(part = "header", 
+            border = fp_border(width = 1.5)) %>%   # line above header
+  hline_bottom(part = "header", 
+               border = fp_border(width = 1.5)) %>% # line below header
+  hline_bottom(part = "body", 
+               border = fp_border(width = 1.5)) %>% # line at bottom
+  font(fontname = "Arial", part = "all") %>%
+  fontsize(size = 9, part = "all")
 
-read_docx() %>%
-  body_add_flextable(ft) %>%
-  print(target = "Tables/Updated/VBT_Predictive_Factors_Table3.docx")
+save_as_docx(table3, path = "Tables/Final/Table3_medhx.docx")
 
 ######################################
 ##Table 4: Pain and Sensory Profiles##
@@ -1139,27 +956,6 @@ redcap <- redcap %>%
          + copc_bodymap_ans2___15 + copc_bodymap_ans2___16 + copc_bodymap_ans2___17
          + copc_bodymap_ans2___18 + copc_bodymap_ans2___19 + copc_bodymap_ans2___20
          + copc_bodymap_ans2___21 + copc_bodymap_ans2___22 + copc_bodymap_ans2___23)
-#vulvodynia criteria
-redcap <- redcap %>%
-  mutate(`Meets criteria for Vulvodynia` = copc_vulvo_1 + copc_vulvo_2) %>%
-  mutate(`Meets criteria for Vulvodynia` = case_match(
-    `Meets criteria for Vulvodynia`, 
-    2 ~ "Yes", 
-    1 ~ "No", 
-    0 ~ "No"
-  ))
-#endometriosis critiera
-redcap <- redcap %>%
-  mutate(`Meets criteria for Diagnosed Endometriosis` = copc_endo_1 + 
-           copc_endo_2 + copc_endo_3) %>%
-  mutate(`Meets criteria for Diagnosed Endometriosis` = case_when(
-    `Meets criteria for Diagnosed Endometriosis`== 3 ~ "Yes", 
-    `Meets criteria for Diagnosed Endometriosis` == 2 ~ "No", 
-    `Meets criteria for Diagnosed Endometriosis` == 1 ~ "No", 
-    `Meets criteria for Diagnosed Endometriosis` == 0 ~ "No", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(`Meets criteria for Diagnosed Endometriosis`) ~ "No"
-  ))
 #persistent fatigue
 redcap <- redcap %>%
   mutate(mh_fatigue = case_when(
@@ -1181,37 +977,12 @@ redcap <- redcap %>%
     redcap_event_name == "virtual_assessment_arm_1" & 
       is.na(mh_gss2) ~ "No"
   ))
-#sensitivity to bright lights
-redcap <- redcap %>%
-  mutate(mh_gss3 = case_when(
-    mh_gss3 == 1 ~ "Yes", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_gss3) ~ "No"
-  ))
 #sensitivity to chemicals
 redcap <- redcap %>%
   mutate(mh_gss4 = case_when(
     mh_gss4 == 1 ~ "Yes", 
     redcap_event_name == "virtual_assessment_arm_1" & 
       is.na(mh_gss4) ~ "No"
-  ))
-#bleeding amount heaviest 
-redcap <- redcap %>%
-  mutate(werf_a2_10 = case_match(
-    werf_a2_10,
-    1 ~ "Spotting",
-    2 ~ "Light", 
-    3 ~ "Moderate",
-    4 ~ "Heavy"
-  ))
-#bleeding amount average
-redcap <- redcap %>%
-  mutate(werf_a2_11 = case_match(
-    werf_a2_11,
-    1 ~ "Spotting",
-    2 ~ "Light", 
-    3 ~ "Moderate",
-    4 ~ "Heavy"
   ))
 #intercourse
 redcap <- redcap %>%
@@ -1220,330 +991,6 @@ redcap <- redcap %>%
     1 ~ "No",
     2 ~ "Yes"
   ))
-#pain with intercourse
-redcap <- redcap %>%
-  mutate(werf_c15 = case_match(
-    werf_c15, 
-    1 ~ "Yes", 
-    0 ~ "No"
-  ))
-#pain with intercourse during last intercourse
-redcap <- redcap %>%
-  mutate(werf_c17 = case_when(
-    werf_c15sexyesno == "No" ~ "No", 
-    werf_c17 == 1 ~ "No", 
-    werf_c17 == 2 ~ "Yes, during intercourse/penetration",
-    werf_c17 == 3 ~ "Yes, in the 24 hours following intercourse/penetration",
-    werf_c17 == 4 ~ "Yes, both during and in the 24 hours following intercourse/penetration"
-  ))
-#pain with intercourse severity 
-redcap <- redcap %>%
-  mutate(werf_c19 = case_when(
-    werf_c19 == 0 ~ 0,
-    werf_c19 == 1 ~ 1, 
-    werf_c19 == 2 ~ 2, 
-    werf_c19 == 3 ~ 3,
-    werf_c19 == 4 ~ 4, 
-    werf_c19 == 5 ~ 5, 
-    werf_c19 == 6 ~ 6, 
-    werf_c19 == 7 ~ 7, 
-    werf_c19 == 8 ~ 8, 
-    werf_c19 == 9 ~ 9, 
-    werf_c19 == 10 ~ 10, 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(werf_c19) ~ 0
-  ))
-#pain with intercourse frequency
-redcap <- redcap %>%
-  mutate(werf_c21 = case_when(
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(werf_c21) ~ "Never", 
-    record_id %in% c(7, 232, 544, 1069, 1541, 1893) ~ "Never", 
-    werf_c21 == 1 ~ "Occasionally (less than a quarter of times)", 
-    werf_c21 == 2 ~ "Often (a quarter to half of the times)", 
-    werf_c21 == 3 ~ "Usually (more than half of the times)", 
-    werf_c21 == 4 ~ "Always (every time)" 
-  ))
-#pain with intercourse causing intercourse to stop
-redcap <- redcap %>%
-  mutate(werf_c23 = case_when(
-    werf_c23 == 1 ~ "Yes", 
-    werf_c23 == 0 ~ "No", 
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(werf_c23) ~ "No"
-  ))
-#diary bleeding amount heaviest
-redcap_subset <- redcap %>%
-  group_by(record_id) %>%
-  summarize(
-    dd_bleeding_max = max(pmax(dd_bleeding, dd_bleeding_days, na.rm = TRUE), na.rm = TRUE),
-    .groups = "drop"
-  )
-
-redcap <- redcap %>%
-  left_join(
-    redcap_subset,
-    by = "record_id"
-  ) %>%
-  mutate(
-    dd_bleeding_max = ifelse(redcap_event_name == "virtual_assessment_arm_1", dd_bleeding_max, NA_real_)
-  )
-
-redcap <- redcap %>%
-  mutate(dd_bleeding_max = case_match(
-    dd_bleeding_max,
-    0 ~ "None",
-    1 ~ "Spotting",
-    2 ~ "Light", 
-    3 ~ "Moderate",
-    4 ~ "Heavy"
-  ))  
-
-redcap <- redcap %>%
-  mutate(bleeding_max_consistency = dd_bleeding_max == werf_a2_10)
-
-#uncomment to view counts (72% consistnecy from retroactive report and diaries)
-#redcap %>%
-#  filter(!is.na(bleeding_max_consistency)) %>%
-#  count(bleeding_max_consistency)
-
-#diary pain average
-redcap_subset_2 <- redcap %>%
-  group_by(record_id) %>%
-  filter(str_starts(redcap_event_name, "diary")) %>%
-  summarize(
-    dd_complete_count = n()
-  ) %>%
-  ungroup()
-
-redcap <- redcap %>%
-  left_join(
-    redcap_subset_2,
-    by = "record_id"
-  ) %>%
-  mutate(
-    dd_complete_count = ifelse(redcap_event_name == "virtual_assessment_arm_1", dd_complete_count, NA_real_)
-  )
-
-redcap <- redcap %>%
-  group_by(record_id) %>%
-  mutate(dd_pain_sum = sum(dd_menstrual, dd_menstrual_days, na.rm = TRUE)) %>%
-  ungroup() %>%
-  mutate(dd_pain_sum = if_else(redcap_event_name == "virtual_assessment_arm_1", 
-                               dd_pain_sum, NA_real_))
-
-redcap <- redcap %>%
-  mutate(dd_avg_menstrual_pain = dd_pain_sum / dd_complete_count)
-
-#diary bleeding amount average, rounded to nearest whole number
-redcap <- redcap %>%
-  group_by(record_id) %>%
-  mutate(dd_bleeding_sum = sum(dd_bleeding, dd_bleeding_days, na.rm = TRUE)) %>%
-  ungroup() %>%
-  mutate(dd_bleeding_sum = if_else(redcap_event_name == "virtual_assessment_arm_1", 
-                                   dd_bleeding_sum, NA_real_))
-
-redcap <- redcap %>%
-  mutate(dd_avg_bleeding = round(dd_bleeding_sum / dd_complete_count)) %>%
-  mutate(dd_avg_bleeding = case_match(
-    dd_avg_bleeding,
-    0 ~ "None",
-    1 ~ "Spotting",
-    2 ~ "Light", 
-    3 ~ "Moderate",
-    4 ~ "Heavy"
-  ))
-
-redcap <- redcap %>%
-  mutate(bleeding_avg_consistency = dd_avg_bleeding == werf_a2_11)
-
-#uncomment to view counts (59% consistnecy from retroactive report and diaries)
-#redcap %>%
-#  filter(!is.na(bleeding_avg_consistency)) %>%
-#  count(bleeding_avg_consistency)
-
-#number diary days with pain >3
-redcap_subset_3 <- redcap %>%
-  group_by(record_id) %>%
-  filter(str_starts(redcap_event_name, "diary")) %>%
-  mutate(dd_pain_3_day1 = ifelse(dd_menstrual > 3, 1, 0)) %>%
-  mutate(dd_pain_3_day2 = ifelse(redcap_event_name == "diary__day_2_arm_1" & 
-                                   dd_menstrual_days > 3, 1, 0)) %>%
-  mutate(dd_pain_3_day3 = ifelse(redcap_event_name == "diary__day_3_arm_1" & 
-                                   dd_menstrual_days > 3, 1, 0)) %>%
-  mutate(dd_pain_3_day4 = ifelse(redcap_event_name == "diary__day_4_arm_1" & 
-                                   dd_menstrual_days > 3, 1, 0)) %>%
-  mutate(dd_pain_3_day5 = ifelse(redcap_event_name == "diary__day_5_arm_1" & 
-                                   dd_menstrual_days > 3, 1, 0)) %>%
-  mutate(dd_pain_3 = sum(dd_pain_3_day1, dd_pain_3_day2, dd_pain_3_day3, 
-                         dd_pain_3_day4, dd_pain_3_day5, na.rm = TRUE)) %>%
-  slice_head() %>%
-  ungroup() %>%
-  select(1, 356) 
-  
-redcap <- redcap %>%
-  left_join(
-    redcap_subset_3,
-    by = "record_id"
-  ) %>%
-  mutate(
-    dd_pain_3 = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
-                               dd_pain_3, NA_real_)
-  )
-
-#number diary days with moderate or heavy bleeding
-redcap_subset_4 <- redcap %>%
-  group_by(record_id) %>%
-  filter(str_starts(redcap_event_name, "diary")) %>%
-  mutate(dd_bleeding_m_h_day1 = ifelse(dd_bleeding > 2, 1, 0)) %>%
-  mutate(dd_bleeding_m_h_day2 = ifelse(redcap_event_name == "diary__day_2_arm_1" & 
-                                   dd_bleeding_days > 2, 1, 0)) %>%
-  mutate(dd_bleeding_m_h_day3 = ifelse(redcap_event_name == "diary__day_3_arm_1" & 
-                                         dd_bleeding_days > 2, 1, 0)) %>%
-  mutate(dd_bleeding_m_h_day4 = ifelse(redcap_event_name == "diary__day_4_arm_1" & 
-                                         dd_bleeding_days > 2, 1, 0)) %>%
-  mutate(dd_bleeding_m_h_day5 = ifelse(redcap_event_name == "diary__day_5_arm_1" & 
-                                         dd_bleeding_days > 2, 1, 0)) %>%
-  mutate(dd_bleeding_m_h = sum(dd_bleeding_m_h_day1, dd_bleeding_m_h_day2, 
-                               dd_bleeding_m_h_day3, dd_bleeding_m_h_day4, 
-                               dd_bleeding_m_h_day5, na.rm = TRUE)) %>%
-  slice_head() %>%
-  ungroup() %>%
-  select(1, 357) 
-
-redcap <- redcap %>%
-  left_join(
-    redcap_subset_4,
-    by = "record_id"
-  ) %>%
-  mutate(
-    dd_bleeding_m_h = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
-                             dd_bleeding_m_h, NA_real_)
-  )
-
-#number diary days with bleeding
-redcap_subset_5 <- redcap %>%
-  group_by(record_id) %>%
-  filter(str_starts(redcap_event_name, "diary")) %>%
-  mutate(dd_bleeding_day1 = ifelse(dd_bleeding > 0, 1, 0)) %>%
-  mutate(dd_bleeding_day2 = ifelse(redcap_event_name == "diary__day_2_arm_1" & 
-                                         dd_bleeding_days > 0, 1, 0)) %>%
-  mutate(dd_bleeding_day3 = ifelse(redcap_event_name == "diary__day_3_arm_1" & 
-                                         dd_bleeding_days > 0, 1, 0)) %>%
-  mutate(dd_bleeding_day4 = ifelse(redcap_event_name == "diary__day_4_arm_1" & 
-                                         dd_bleeding_days > 0, 1, 0)) %>%
-  mutate(dd_bleeding_day5 = ifelse(redcap_event_name == "diary__day_5_arm_1" & 
-                                         dd_bleeding_days > 0, 1, 0)) %>%
-  mutate(dd_bleeding_number = sum(dd_bleeding_day1, dd_bleeding_day2, 
-                                  dd_bleeding_day3, dd_bleeding_day4, 
-                                  dd_bleeding_day5, na.rm = TRUE)) %>%
-  slice_head() %>%
-  ungroup() %>%
-  select(1, 358) 
-
-redcap <- redcap %>%
-  left_join(
-    redcap_subset_5,
-    by = "record_id"
-  ) %>%
-  mutate(
-    dd_bleeding_number = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
-                                dd_bleeding_number, NA_real_)
-  )
-
-#diary max bowel pain
-redcap_subset_6 <- redcap %>%
-  group_by(record_id) %>%
-  summarize(
-    dd_bowel_max = max(pmax(dd_bowel, dd_bowel_days, na.rm = TRUE), na.rm = TRUE),
-    .groups = "drop"
-  )
-
-redcap <- redcap %>%
-  left_join(
-    redcap_subset_6,
-    by = "record_id"
-  ) %>%
-  mutate(
-    dd_bowel_max = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
-                          dd_bowel_max, NA_real_)
-  )
-
-#diary max bladder pain
-redcap_subset_7 <- redcap %>%
-  group_by(record_id) %>%
-  summarize(
-    dd_bladder_max = max(pmax(dd_bladder, dd_bladder_days, na.rm = TRUE), na.rm = TRUE),
-    .groups = "drop"
-  )
-
-redcap <- redcap %>%
-  left_join(
-    redcap_subset_7,
-    by = "record_id"
-  ) %>%
-  mutate(
-    dd_bladder_max = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
-                            dd_bladder_max, NA_real_)
-  )
-
-#diary days using medication, removes anyone without complete diary data
-redcap <- redcap %>%
-  group_by(record_id) %>%
-  mutate(dd_medication = if (any(
-                             (redcap_event_name == "diary__day_1_arm_1" & 
-                                 is.na(dd_nsaid_yn)) | 
-                             (redcap_event_name == "virtual_assessment_arm_1" & 
-                              dd_complete_count < 5)
-                             ))  {
-    NA_real_
-  } else {
-    sum(dd_nsaid_yn, dd_acetaminophen_yn, dd_painreliever_yn, 
-        dd_painkillers_yn_days, na.rm = TRUE)
-  }) %>%
-  ungroup()
-
-redcap <- redcap %>%
-  group_by(record_id) %>%
-  mutate(dd_medication_multi = case_when(
-    redcap_event_name == "diary__day_1_arm_1" ~ sum(dd_nsaid_yn, 
-                                                    dd_acetaminophen_yn, 
-                                                    dd_painreliever_yn, na.rm = TRUE)
-  )) %>%
-  mutate(dd_medication = case_when(
-    dd_medication_multi == 2 ~ dd_medication - 1, 
-    dd_medication_multi == 3 ~ dd_medication - 2, 
-    dd_medication_multi < 2 ~ dd_medication
-  )) %>%
-  mutate(
-    dd_medication = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
-                           dd_medication[redcap_event_name == "diary__day_1_arm_1"][1],
-                         NA
-    )
-  ) %>%
-  ungroup()
-
-#diary max menstrual pain 
-redcap <- redcap %>%
-  group_by(record_id) %>%
-  mutate(
-    max_pain_bl = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
-                         max_pain_bl[redcap_event_name == "consent_ids_arm_1"][1],
-                       NA
-    )
-  ) %>%
-  ungroup()
-
-#diary avearge pelvic pain day before period 
-redcap <- redcap %>%
-  group_by(record_id) %>%
-  mutate(
-    dd_painbefore = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
-                           dd_painbefore[redcap_event_name == "diary__day_1_arm_1"][1],
-                         NA
-    )
-  ) %>%
-  ungroup()
 
 #saving file
 write_csv(redcap, "Edited data files/redcap_post_table4.csv") 
@@ -1555,7 +1002,7 @@ redcap_table4 <- redcap %>%
     `Average NMPP, last 7 days` = mcgill_1,
     `Average dysuria, last 7 days` = mcgill_2, 
     `Average pain with bowel movements, last 7 days` = mcgill_3, 
-    `Sexual intercourse, last 7 days` = mcgill_4, 
+    `Had sexual intercourse, last 7 days` = mcgill_4, 
     `Average dyspareunia, last 7 days` = mcgill_5,
     `Meets criteria for BPS/IC` = bps_ic_bl, 
     `Meets criteria for IBS` = ibs_bl, 
@@ -1565,32 +1012,15 @@ redcap_table4 <- redcap %>%
     `Sensitivity to odors` = mh_gss2, 
     `Sensitivity to bright lights` = mh_gss3, 
     `Sensitivity to chemicals` = mh_gss4,
-    `Bleeding on heaviest day of period` = werf_a2_10, 
-    `Bleeding on average per period` = werf_a2_11, 
-    `Ever had sexual intercourse` = werf_c15sexyesno, 
-    `Ever had dyspareunia`= werf_c15, 
-    `Age when dyspareunia began` = werf_c16, 
-    `Dyspareunia during most recent sexual intercourse` = werf_c17, 
-    `Max severity of dyspareunia during most recent sexual intercourse` = werf_c19, 
-    `Frequency of dyspareunia, last 12 months` = werf_c21, 
-    `Dyspareunia resulting in disruption of sexual intercourse` = werf_c23, 
-    `Days of complete menstrual diary data` = dd_complete_count, 
-    `Days of bleeding reported on diary` = dd_bleeding_number, 
-    `Days of moderate to heavy bleeding reported on diary` = dd_bleeding_m_h,
-    `Average pelvic pain, 24 hours before period onset` = dd_painbefore,
-    `Days with menstrual pain > 3 reported on diary` = dd_pain_3, 
-    `Average menstrual pain reported on diary` = dd_avg_menstrual_pain, 
-    `Max menstrual pain reported on diary` = max_pain_bl, 
-    `Max bowel pain reported on diary` = dd_bowel_max, 
-    `Max bladder pain reported on diary` = dd_bladder_max, 
-    `Days of pain reliever usage reported on diary` = dd_medication
+    `Ever had sexual intercourse` = werf_c15sexyesno
   )
 
    
 vars = c("Average NMPP, last 7 days", 
          "Average dysuria, last 7 days", 
          "Average pain with bowel movements, last 7 days",
-         "Sexual intercourse, last 7 days", 
+         "Had sexual intercourse, last 7 days", 
+         "Ever had sexual intercourse",
          "Average dyspareunia, last 7 days", 
          "Meets criteria for BPS/IC", 
          "Meets criteria for IBS", 
@@ -1598,63 +1028,25 @@ vars = c("Average NMPP, last 7 days",
          "Persistent fatigue", 
          "Sensitivity to sounds", 
          "Sensitivity to odors", 
-         "Sensitivity to chemicals", 
-         "Ever had sexual intercourse", 
-         "Ever had dyspareunia", 
-         "Age when dyspareunia began", 
-         "Dyspareunia during most recent sexual intercourse", 
-         "Max severity of dyspareunia during most recent sexual intercourse", 
-         "Frequency of dyspareunia, last 12 months", 
-         "Dyspareunia resulting in disruption of sexual intercourse", 
-         "Days of complete menstrual diary data", 
-         "Days of bleeding reported on diary", 
-         "Days of moderate to heavy bleeding reported on diary", 
-         "Average pelvic pain, 24 hours before period onset", 
-         "Days with menstrual pain > 3 reported on diary", 
-         "Average menstrual pain reported on diary", 
-         "Max menstrual pain reported on diary", 
-         "Max bowel pain reported on diary", 
-         "Max bladder pain reported on diary", 
-         "Days of pain reliever usage reported on diary", 
-         "Meets criteria for Vulvodynia", 
-         "Meets criteria for Diagnosed Endometriosis"
+         "Sensitivity to chemicals"
 )
     
 factor_vars <- c("Meets criteria for BPS/IC", 
                  "Meets criteria for IBS",
-                 "Meets criteria for Vulvodynia", 
                  "Meets criteria for Diagnosed Endometriosis",
                  "Persistent fatigue", 
                  "Sensitivity to sounds", 
                  "Sensitivity to odors", 
                  "Sensitivity to chemicals",
-                 "Sexual intercourse, last 7 days",
-                 "Ever had sexual intercourse", 
-                 "Ever had dyspareunia", 
-                 "Dyspareunia during most recent sexual intercourse",
-                 "Frequency of dyspareunia, last 12 months", 
-                 "Dyspareunia resulting in disruption of sexual intercourse", 
-                 "Bleeding on heaviest day of period", 
-                 "Bleeding on average per period"
+                 "Had sexual intercourse, last 7 days",
+                 "Ever had sexual intercourse"
 )
 
 nonnormal_vars <- c("Average NMPP, last 7 days", 
                     "Average dysuria, last 7 days", 
                     "Average pain with bowel movements, last 7 days",
                     "Average dyspareunia, last 7 days",
-                    "Number bodily pain sites, last 30 days",
-                    "Age when dyspareunia began", 
-                    "Max severity of dyspareunia during most recent sexual intercourse", 
-                    "Days of complete menstrual diary data", 
-                    "Days of bleeding reported on diary", 
-                    "Days of moderate to heavy bleeding reported on diary", 
-                    "Average pelvic pain, 24 hours before period onset", 
-                    "Days with menstrual pain > 3 reported on diary", 
-                    "Average menstrual pain reported on diary", 
-                    "Max menstrual pain reported on diary", 
-                    "Max bowel pain reported on diary", 
-                    "Max bladder pain reported on diary", 
-                    "Days of pain reliever usage reported on diary"
+                    "Number bodily pain sites, last 30 days"
 )
     
 #Creating summary table 4
@@ -1666,8 +1058,11 @@ sum_df <- as.data.frame(print(sum,
                               printToggle = FALSE,
                               quote = FALSE,
                               noSpaces = TRUE,
-                              showAllLevels = TRUE, 
-                              pValues = FALSE))
+                              showAllLevels = FALSE))
+
+# Remove test columns
+cols_to_remove <- "test"
+sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
 
 #Creating table with comparisons for DYS and DYSB
 redcap_table4_p <- redcap_table4 %>%
@@ -1681,62 +1076,38 @@ comp_df <- as.data.frame(print(comp,
                                printToggle = FALSE,
                                quote = FALSE,
                                noSpaces = TRUE,
-                               showAllLevels = TRUE, 
-                               pValues = TRUE)) %>%
+                               showAllLevels = FALSE)) %>%
   dplyr::select("p")
 
 #merge summary and comparison tables
 table4 <- cbind(sum_df, p_dys_dysb = comp_df$p )
 
-#reformat and save table
-#Step 1: save rownames as a column
-table4 <- data.frame(rowname = rownames(table4), table4, row.names = NULL)
+#clean up
+table4 <- table4 %>%
+  rownames_to_column("Variable")
 
-# Step 2: Create an empty output data frame
-restructured_df <- data.frame()
-
-# Step 3: Loop through rows and insert variable name before its levels
-current_var <- NA
-
-for (i in seq_len(nrow(table4))) {
-  row_label <- table4$rowname[i]
-  if (!startsWith(row_label, "  ")) {
-    # Continuous variable row — use as is
-    current_var <- row_label
-    new_row <- table4[i, ]
-    new_row$Variable <- current_var
-    restructured_df <- bind_rows(restructured_df, new_row)
-  } else {
-    # Categorical level — insert variable name row if not already added
-    if (!identical(tail(restructured_df$Variable, 1), current_var)) {
-      var_row <- table4[i, ]
-      var_row[2:ncol(var_row)] <- ""  # clear values
-      var_row$Variable <- current_var
-      restructured_df <- bind_rows(restructured_df, var_row)
-    }
-    level_row <- table4[i, ]
-    level_row$Variable <- ""
-    restructured_df <- bind_rows(restructured_df, level_row)
-  }
-}
-
-# Step 4: Drop original rowname and reorder
-restructured_df <- restructured_df[, c("Variable", setdiff(names(restructured_df), c("rowname", "Variable")))]
-
+table4 <- table4 %>%
+  mutate(Variable = gsub("\\.\\.\\.", " ", Variable), # replace ... with space
+         Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
+         Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
+         Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
+         Variable = trimws(Variable))                 # trim extra whitespace
 
 #building flextable
-ft <- flextable(table4) %>%
-  bold(i = which(table4$Variable != ""), j = 1) %>%      # Bold variable rows
-  align(align = "left", part = "all") %>%                 # Align left
-  fontsize(size = 9, part = "all") %>%                    # Reduce font size
-  set_table_properties(layout = "fixed", width = 1) %>%   # Fixed width layout
-  width(j = 1, width = 2.25) %>%                          # Widen first column for variable names
-  width(j = 2:ncol(table4), width = 1.25) %>%            # Narrow group columns
-  theme_vanilla()
+table4 <- flextable(table4) %>%
+  set_header_labels(Variable = "") %>%        # removes "Variable" header
+  autofit() %>%                               # fits column widths to content
+  bold(part = "header") %>%                   # bold header row
+  hline_top(part = "header", 
+            border = fp_border(width = 1.5)) %>%   # line above header
+  hline_bottom(part = "header", 
+               border = fp_border(width = 1.5)) %>% # line below header
+  hline_bottom(part = "body", 
+               border = fp_border(width = 1.5)) %>% # line at bottom
+  font(fontname = "Arial", part = "all") %>%
+  fontsize(size = 9, part = "all")
 
-read_docx() %>%
-  body_add_flextable(ft) %>%
-  print(target = "Tables/Updated/VBT_Predictive_Factors_Table4.docx")
+save_as_docx(table4, path = "Tables/Final/Table4_painsensory.docx")
 
     
 ###################################
@@ -1968,7 +1339,7 @@ redcap_propr <- redcap %>%
   ) %>%
   select(-results) %>%   # drop the temporary list column
   ungroup() %>%
-  select(1, 389:396)
+  select(1, 380:387)
 
 #merge PROPr and individual utility scores back into dataset
 redcap <- redcap %>%
@@ -2008,28 +1379,6 @@ redcap <- redcap %>%
     social_utility = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
                             social_utility, NA_real_)
   )
-
-#promis positive affect
-redcap <- redcap %>%
-  mutate(promis_pos_sum = promis_swb_p_027r1 + promis_swb_p_025r1 + 
-           promis_swb_p_026r1 + promis_swb_p_029r1)
-
-#create lookup table of t-scores and SE from promis manual
-promis_pos_lookup <- tibble(
-  summed_score = 4:20,
-  t_score = c(22.0, 25.7, 28.0, 30.0, 31.8, 33.6, 35.4, 37.4, 39.5, 41.6, 
-              43.8, 46.2, 48.7, 51.2, 53.8, 56.8, 63.0),
-  se = c(3.6, 2.7, 2.5, 2.5, 2.4, 2.5, 2.5, 2.5, 2.5, 2.5, 2.6, 2.6, 
-         2.7, 2.6, 2.6, 3.0, 5.3)
-)
-
-#create new variables with t scores and SE 
-redcap <- redcap %>%
-  left_join(promis_pos_lookup, by = c("promis_pos_sum" = "summed_score")) %>%
-  rename(
-    promis_pos_t_score = t_score,
-    promis_pos_se = se
-  ) 
 
 #pain catastrophizing total and sub-scales
 #total
@@ -2182,6 +1531,9 @@ redcap <- redcap %>%
     TRUE ~ promis_belly_se
   ))
 
+#saving file
+write_csv(redcap, "Edited data files/redcap_post_table5.csv")
+
 #Defining vars for table 5
 redcap_table5 <- redcap %>%
   filter(redcap_event_name == "virtual_assessment_arm_1") %>%
@@ -2196,7 +1548,6 @@ redcap_table5 <- redcap %>%
     `Promis cognitive function` = promis_cf_t_score, 
     `Promis average pain` = promis_average_pain, 
     `Promis PROPr` = PROPr, 
-    `Promis positive affect (ped)` = promis_pos_t_score, 
     `Promis belly pain` = promis_belly_t_score, 
     `GSS` = gss_sum, 
     `MacArthur U.S. standing` = macarthur_ladder_us, 
@@ -2218,7 +1569,6 @@ vars <- c("Promis physical function",
           "Promis cognitive function", 
           "Promis average pain", 
           "Promis PROPr", 
-          "Promis positive affect (ped)", 
           "Promis belly pain", 
           "PCS-T", 
           "PCS-R", 
@@ -2244,7 +1594,6 @@ nonnormal_vars <- c("Promis physical function",
                     "Promis cognitive function", 
                     "Promis average pain", 
                     "Promis PROPr", 
-                    "Promis positive affect (ped)", 
                     "Promis belly pain", 
                     "PCS-T", 
                     "PCS-R", 
@@ -2268,8 +1617,11 @@ sum_df <- as.data.frame(print(sum,
                               printToggle = FALSE,
                               quote = FALSE,
                               noSpaces = TRUE,
-                              showAllLevels = TRUE, 
-                              pValues = FALSE))
+                              showAllLevels = FALSE))
+
+# Remove test columns
+cols_to_remove <- "test"
+sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
 
 #Creating table with comparisons for DYS and DYSB
 redcap_table5_p <- redcap_table5 %>%
@@ -2282,269 +1634,988 @@ comp_df <- as.data.frame(print(comp,
                                printToggle = FALSE,
                                quote = FALSE,
                                noSpaces = TRUE,
-                               showAllLevels = TRUE, 
-                               pValues = TRUE)) %>%
+                               showAllLevels = FALSE)) %>%
   dplyr::select("p")
 
 #merge summary and comparison tables
 table5 <- cbind(sum_df, p_dys_dysb = comp_df$p )
 
-#reformat and save table
-#Step 1: save rownames as a column
-table5 <- data.frame(rowname = rownames(table5), table5, row.names = NULL)
+#clean up
+table5 <- table5 %>%
+  rownames_to_column("Variable")
 
-# Step 2: Create an empty output data frame
-restructured_df <- data.frame()
-
-# Step 3: Loop through rows and insert variable name before its levels
-current_var <- NA
-
-for (i in seq_len(nrow(table5))) {
-  row_label <- table5$rowname[i]
-  if (!startsWith(row_label, "  ")) {
-    # Continuous variable row — use as is
-    current_var <- row_label
-    new_row <- table5[i, ]
-    new_row$Variable <- current_var
-    restructured_df <- bind_rows(restructured_df, new_row)
-  } else {
-    # Categorical level — insert variable name row if not already added
-    if (!identical(tail(restructured_df$Variable, 1), current_var)) {
-      var_row <- table5[i, ]
-      var_row[2:ncol(var_row)] <- ""  # clear values
-      var_row$Variable <- current_var
-      restructured_df <- bind_rows(restructured_df, var_row)
-    }
-    level_row <- table5[i, ]
-    level_row$Variable <- ""
-    restructured_df <- bind_rows(restructured_df, level_row)
-  }
-}
-
-# Step 4: Drop original rowname and reorder
-restructured_df <- restructured_df[, c("Variable", setdiff(names(restructured_df), c("rowname", "Variable")))]
-
+table5 <- table5 %>%
+  mutate(Variable = gsub("\\.\\.\\.", " ", Variable), # replace ... with space
+         Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
+         Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
+         Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
+         Variable = trimws(Variable))                 # trim extra whitespace
 
 #building flextable
-ft <- flextable(table5) %>%
-  bold(i = which(table5$Variable != ""), j = 1) %>%      # Bold variable rows
-  align(align = "left", part = "all") %>%                 # Align left
-  fontsize(size = 9, part = "all") %>%                    # Reduce font size
-  set_table_properties(layout = "fixed", width = 1) %>%   # Fixed width layout
-  width(j = 1, width = 2.25) %>%                          # Widen first column for variable names
-  width(j = 2:ncol(table5), width = 1.25) %>%            # Narrow group columns
-  theme_vanilla()
+table5 <- flextable(table5) %>%
+  set_header_labels(Variable = "") %>%        # removes "Variable" header
+  autofit() %>%                               # fits column widths to content
+  bold(part = "header") %>%                   # bold header row
+  hline_top(part = "header", 
+            border = fp_border(width = 1.5)) %>%   # line above header
+  hline_bottom(part = "header", 
+               border = fp_border(width = 1.5)) %>% # line below header
+  hline_bottom(part = "body", 
+               border = fp_border(width = 1.5)) %>% # line at bottom
+  font(fontname = "Arial", part = "all") %>%
+  fontsize(size = 9, part = "all")
 
-read_docx() %>%
-  body_add_flextable(ft) %>%
-  print(target = "Tables/Updated/VBT_Predictive_Factors_Table5_part1.docx")
+save_as_docx(table5, path = "Tables/Final/Table5_psychosocial.docx")
 
+########################
+##Table 6: Medications##
+########################
 
-
-#time between finishing drinking and FS
+#recode vars
+#ocps
 redcap <- redcap %>%
-  mutate(time_drinking_fs_mins = as.numeric(vbt_fs_time - vbt_time_drinking)/60)
-
-#time bwtn drinking and FU
-redcap <- redcap %>%
-  mutate(time_drinking_fu_mins = as.numeric(vbt_fu_time - vbt_time_drinking)/60)
-
-#dummy var for cap out
-redcap <- redcap %>%
-  mutate(capped_out = case_when(
-    redcap_event_name == "virtual_assessment_arm_1" & is.na(vbt_cap_out_time) ~ 0, 
-    redcap_event_name == "virtual_assessment_arm_1" & !is.na(vbt_cap_out_time) ~ 1,
-    redcap_event_name != "virtual_assessment_arm_1" ~ NA))
-
-#time between drinking and mt, throw out anyone who capped out
-redcap <- redcap %>%
-  mutate(time_drinking_mt_mins = case_when(
-    capped_out == 0 ~ as.numeric(vbt_mt_time - vbt_time_drinking)/60,
-    capped_out == 1 ~ NA
-  ))
-
-#MT urgency and pain, throw out anyone who capped out
-redcap <- redcap %>%
-  mutate(vbt_mt_urgency = case_when(
-    capped_out == 0 ~ vbt_mt_urgency, 
-    capped_out == 1 ~ NA
-  )) %>%
-  mutate(vbt_mt_pain = case_when(
-    capped_out == 0 ~ vbt_mt_pain, 
-    capped_out == 1 ~ NA
-  ))
-
-
-#flag for negative times or total times that are over 150 mins (1 = true, 0 = false)
-redcap_flag <- redcap %>%
-  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
-  rowwise() %>%
-  mutate(
-    vbt_flag = any(c(time_drinking_fs_mins, time_drinking_fu_mins, time_drinking_mt_mins) < 0, na.rm = TRUE) |
-      any(c(time_drinking_fs_mins, time_drinking_fu_mins, time_drinking_mt_mins) > 150, na.rm = TRUE) |
-      all(is.na(c(time_drinking_fs_mins, time_drinking_fu_mins, time_drinking_mt_mins)))
-  ) %>%
-  ungroup()%>%
-  select(1, 414)
-
-redcap <- redcap %>%
-  left_join(
-    redcap_flag,
-    by = "record_id"
-  ) %>%
-  mutate(
-    vbt_flag = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
-                      vbt_flag, NA_real_)
-  )
-
-#vbt understanding
-redcap <- redcap %>%
-  mutate(understanding_yn = case_when(
-    understanding_yn == 0 ~ "No",
-    understanding_yn == 1 ~ "Yes", 
+  mutate(mh_ocps = case_when(
+    mh_ocps == 1 ~ "Currently taking",
+    mh_ocps == 2 ~ "Have taken in the past",
     redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(understanding_yn) ~ "Unknown"
+      is.na(mh_ocps) ~ "Have never taken"
+  )) 
+#patch
+redcap <- redcap %>%
+  mutate(mh_patch = case_when(
+    mh_patch == 1 ~ "Currently taking",
+    mh_patch == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_patch) ~ "Have never taken"
+  )) 
+#ring
+redcap <- redcap %>%
+  mutate(mh_ring = case_when(
+    mh_ring == 1 ~ "Currently taking",
+    mh_ring == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_ring) ~ "Have never taken"
+  )) 
+#implant
+redcap <- redcap %>%
+  mutate(mh_implant = case_when(
+    mh_implant == 1 ~ "Currently taking",
+    mh_implant == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_implant) ~ "Have never taken"
+  )) 
+#shot
+redcap <- redcap %>%
+  mutate(mh_shot = case_when(
+    mh_shot == 1 ~ "Currently taking",
+    mh_shot == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_shot) ~ "Have never taken"
+  )) 
+#pills
+redcap <- redcap %>%
+  mutate(mh_p_pills = case_when(
+    mh_p_pills == 1 ~ "Currently taking",
+    mh_p_pills == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_p_pills) ~ "Have never taken"
+  )) 
+#gnrh agonist
+redcap <- redcap %>%
+  mutate(mh_gnrh_agonist = case_when(
+    mh_gnrh_agonist == 1 ~ "Currently taking",
+    mh_gnrh_agonist == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_gnrh_agonist) ~ "Have never taken"
+  ))
+#gnrh antagonist
+redcap <- redcap %>%
+  mutate(mh_gnrh_antagonist = case_when(
+    mh_gnrh_antagonist == 1 ~ "Currently taking",
+    mh_gnrh_antagonist == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_gnrh_antagonist) ~ "Have never taken"
+  )) 
+#hormonal iud
+redcap <- redcap %>%
+  mutate(mh_iudh = case_when(
+    mh_iudh == 1 ~ "Currently taking",
+    mh_iudh == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_iudh) ~ "Have never taken"
+  )) 
+#copper iud
+redcap <- redcap %>%
+  mutate(mh_iudc = case_when(
+    mh_iudc == 1 ~ "Currently taking",
+    mh_iudc == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_iudc) ~ "Have never taken"
+  ))
+#Aromatase
+redcap <- redcap %>%
+  mutate(mh_aromatase = case_when(
+    mh_aromatase == 1 ~ "Currently taking",
+    mh_aromatase == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_aromatase) ~ "Have never taken"
+  )) 
+#other
+redcap <- redcap %>%
+  mutate(mh_hormonal_other = case_when(
+    mh_hormonal_other == 1 ~ "Currently taking",
+    mh_hormonal_other == 2 ~ "Have taken in the past",
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_hormonal_other) ~ "Have never taken"
+  ))
+#triptans use
+redcap <- redcap %>%
+  mutate(mh_triptans = case_when(
+    mh_triptans == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_triptans) ~ "No"
+  ))
+#beta blocker use
+redcap <- redcap %>%
+  mutate(mh_betablocker = case_when(
+    mh_betablocker == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_betablocker) ~ "No"
+  ))
+#tranq use
+redcap <- redcap %>%
+  mutate(mh_tranq = case_when(
+    mh_tranq == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_tranq) ~ "No"
+  ))
+#acetaminophen amounts
+redcap <- redcap %>%
+  mutate(mh_acetaminophen_amount = case_when(
+    mh_acetaminophen_amount == 1 ~ "1-2", 
+    mh_acetaminophen_amount == 2 ~ "3-5", 
+    mh_acetaminophen_amount == 3 ~ "6-14", 
+    mh_acetaminophen_amount == 4 ~ "15+", 
+    mh_acetaminophen_yn == "No" ~ "0"
+  ))
+#ibuprofen amounts
+redcap <- redcap %>%
+  mutate(mh_ibuprofen_amount = case_when(
+    mh_ibuprofen_amount == 1 ~ "1-2", 
+    mh_ibuprofen_amount == 2 ~ "3-5", 
+    mh_ibuprofen_amount == 3 ~ "6-14", 
+    mh_ibuprofen_amount == 4 ~ "15+", 
+    mh_ibuprofen_yn == "No" ~ "0"
+  )) 
+#other med amounts
+redcap <- redcap %>%
+  mutate(mh_othermed_amount = case_when(
+    mh_othermed_amount == 1 ~ "1-2", 
+    mh_othermed_amount == 2 ~ "3-5", 
+    mh_othermed_amount == 3 ~ "6-14", 
+    mh_othermed_amount == 4 ~ "15+", 
+    mh_othermeds_yn == "No" ~ "0"
   ))
 
 #saving file
-write_csv(redcap, "Edited data files/redcap_post_table5.csv") 
+write_csv(redcap, "Edited data files/redcap_post_table6.csv")
 
-
-#Defining vars for table 5 part 2 (bladder test), throwing out anyone flagged for weird VBT times
-redcap_table5 <- redcap %>%
+#Defining vars for table 6
+redcap_table6 <- redcap %>%
   filter(redcap_event_name == "virtual_assessment_arm_1") %>%
-  filter(vbt_flag == 0) %>%
   rename(
-    `Time to FS (mins)` = time_drinking_fs_mins, 
-    `Time to FU (mins)` = time_drinking_fu_mins, 
-    `Time to MT (mins)` = time_drinking_mt_mins, 
-    `FS bladder urgency (VAS)` = vbt_fs_urgency, 
-    `FS bladder pain (VAS)` = vbt_fs_pain, 
-    `FU bladder urgency (VAS)` = vbt_fu_urgency, 
-    `FU bladder pain (VAS)` = vbt_fu_pain, 
-    `MT bladder urgency (VAS)` = vbt_mt_urgency, 
-    `MT bladder pain (VAS)` = vbt_mt_pain, 
-    `MT sharp pain (VAS)` = vbt_sharp, 
-    `MT pressing pain (VAS)` = vbt_pressing, 
-    `Understanding of bladder task` = understanding_yn, 
-    `Focus during bladder task (VAS)` = understanding_focus, 
-    `Capped out of bladder task` = capped_out
+    `Oral Contraceptive Pills` = mh_ocps,
+    `Contraceptive Patch` = mh_patch,
+    `Vaginal Ring` = mh_ring,
+    `Progestin Implant` = mh_implant,
+    `Progestin Shot` = mh_shot,
+    `Progestin Pills` = mh_p_pills,
+    `GnRH Agonists` = mh_gnrh_agonist,
+    `GnRH Antagonists` = mh_gnrh_antagonist,
+    `Hormonal IUD` = mh_iudh,
+    `Copper IUD` = mh_iudc,
+    `Aromatase Inhibitors` = mh_aromatase,
+    `Other Hormonal Medication` = mh_hormonal_other,
+    `Used triptans regularly in past year (for any indication)` = mh_triptans,
+    `Used beta-blockers regularly in past year (for any indication)` = mh_betablocker, 
+    `Used minor tranquilizers regularly in past year (for any indication)` = mh_tranq,
+    `Number of acetaminophen tablets taken on average per period` = mh_acetaminophen_amount, 
+    `Number of ibuprofen tablets taken on average per period` = mh_ibuprofen_amount, 
+    `Number of other anti-inflammatory tablets taken on average per period` = mh_othermed_amount
   )
 
-vars <- c("Time to FS (mins)",
-          "Time to FU (mins)",
-          "Time to MT (mins)",
-          "FS bladder urgency (VAS)",
-          "FS bladder pain (VAS)",
-          "FU bladder urgency (VAS)",
-          "FU bladder pain (VAS)",
-          "MT bladder urgency (VAS)",
-          "MT bladder pain (VAS)", 
-          "MT sharp pain (VAS)",
-          "MT pressing pain (VAS)",
-          "Understanding of bladder task",
-          "Focus during bladder task (VAS)", 
-          "Capped out of bladder task"
+vars <- c("Oral Contraceptive Pills", "Contraceptive Patch", "Vaginal Ring", 
+          "Progestin Implant", "Progestin Shot", "Progestin Pills", 
+          "GnRH Agonists", "GnRH Antagonists", "Hormonal IUD", "Copper IUD", 
+          "Aromatase Inhibitors", "Other Hormonal Medication",
+          "Used triptans regularly in past year (for any indication)",
+          "Used beta-blockers regularly in past year (for any indication)", 
+          "Used minor tranquilizers regularly in past year (for any indication)",
+          "Number of acetaminophen tablets taken on average per period", 
+          "Number of ibuprofen tablets taken on average per period", 
+          "Number of other anti-inflammatory tablets taken on average per period" 
           )
 
-nonnormal_vars <- c("Time to FS (mins)",
-                    "Time to FU (mins)",
-                    "Time to MT (mins)",
-                    "FS bladder urgency (VAS)",
-                    "FS bladder pain (VAS)",
-                    "FU bladder urgency (VAS)",
-                    "FU bladder pain (VAS)",
-                    "MT bladder urgency (VAS)",
-                    "MT bladder pain (VAS)", 
-                    "MT sharp pain (VAS)",
-                    "MT pressing pain (VAS)",
-                    "Focus during bladder task (VAS)"
-                    )
-
-#Creating summary table 5
-sum <- CreateTableOne(vars, data = redcap_table5, strata = "Group", 
-                      factorVars = "Capped out of bladder task")
+#Creating summary table 6
+sum <- CreateTableOne(vars, data = redcap_table6, strata = "Group")
 
 sum_df <- as.data.frame(print(sum,
                               nonnormal = nonnormal_vars,
                               printToggle = FALSE,
                               quote = FALSE,
                               noSpaces = TRUE,
-                              showAllLevels = TRUE, 
-                              pValues = FALSE))
+                              showAllLevels = FALSE))
+
+# Remove test columns
+cols_to_remove <- "test"
+sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
 
 #Creating table with comparisons for DYS and DYSB
-redcap_table5_p <- redcap_table5 %>%
+redcap_table6_p <- redcap_table6 %>%
   filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
 
-comp <- CreateTableOne(vars, data = redcap_table5_p, strata = "Group",
-                       factorVars = "Capped out of bladder task")
+comp <- CreateTableOne(vars, data = redcap_table6_p, strata = "Group")
 
 comp_df <- as.data.frame(print(comp,
                                nonnormal = vars,
                                printToggle = FALSE,
                                quote = FALSE,
                                noSpaces = TRUE,
-                               showAllLevels = TRUE, 
-                               pValues = TRUE)) %>%
+                               showAllLevels = FALSE)) %>%
   dplyr::select("p")
 
 #merge summary and comparison tables
-table5 <- cbind(sum_df, p_dys_dysb = comp_df$p )
+table6 <- cbind(sum_df, p_dys_dysb = comp_df$p )
 
-#reformat and save table
-#Step 1: save rownames as a column
-table5 <- data.frame(rowname = rownames(table5), table5, row.names = NULL)
+#clean up
+table6 <- table6 %>%
+  rownames_to_column("Variable")
 
-# Step 2: Create an empty output data frame
-restructured_df <- data.frame()
-
-# Step 3: Loop through rows and insert variable name before its levels
-current_var <- NA
-
-for (i in seq_len(nrow(table5))) {
-  row_label <- table5$rowname[i]
-  if (!startsWith(row_label, "  ")) {
-    # Continuous variable row — use as is
-    current_var <- row_label
-    new_row <- table5[i, ]
-    new_row$Variable <- current_var
-    restructured_df <- bind_rows(restructured_df, new_row)
-  } else {
-    # Categorical level — insert variable name row if not already added
-    if (!identical(tail(restructured_df$Variable, 1), current_var)) {
-      var_row <- table5[i, ]
-      var_row[2:ncol(var_row)] <- ""  # clear values
-      var_row$Variable <- current_var
-      restructured_df <- bind_rows(restructured_df, var_row)
-    }
-    level_row <- table5[i, ]
-    level_row$Variable <- ""
-    restructured_df <- bind_rows(restructured_df, level_row)
-  }
-}
-
-# Step 4: Drop original rowname and reorder
-restructured_df <- restructured_df[, c("Variable", setdiff(names(restructured_df), c("rowname", "Variable")))]
-
+table6 <- table6 %>%
+  mutate(Variable = gsub("\\.\\.\\.", " ", Variable), # replace ... with space
+         Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
+         Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
+         Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
+         Variable = trimws(Variable))                 # trim extra whitespace
 
 #building flextable
-ft <- flextable(table5) %>%
-  bold(i = which(table5$Variable != ""), j = 1) %>%      # Bold variable rows
-  align(align = "left", part = "all") %>%                 # Align left
-  fontsize(size = 9, part = "all") %>%                    # Reduce font size
-  set_table_properties(layout = "fixed", width = 1) %>%   # Fixed width layout
-  width(j = 1, width = 2.25) %>%                          # Widen first column for variable names
-  width(j = 2:ncol(table5), width = 1.25) %>%            # Narrow group columns
-  theme_vanilla()
+table6 <- flextable(table6) %>%
+  set_header_labels(Variable = "") %>%        # removes "Variable" header
+  autofit() %>%                               # fits column widths to content
+  bold(part = "header") %>%                   # bold header row
+  hline_top(part = "header", 
+            border = fp_border(width = 1.5)) %>%   # line above header
+  hline_bottom(part = "header", 
+               border = fp_border(width = 1.5)) %>% # line below header
+  hline_bottom(part = "body", 
+               border = fp_border(width = 1.5)) %>% # line at bottom
+  font(fontname = "Arial", part = "all") %>%
+  fontsize(size = 9, part = "all")
 
-read_docx() %>%
-  body_add_flextable(ft) %>%
-  print(target = "Tables/Updated/VBT_Predictive_Factors_Table5_part2.docx")
+save_as_docx(table6, path = "Tables/Final/Table6_medication.docx")
 
-###########################
-##Supplementary variables##
-###########################
+#####################################
+##Table 7: Diagnoses and Procedures##
+#####################################
+
+#recode vars
+#diagnosed cysts
+redcap <- redcap %>%
+  mutate(mh_cysts = case_when(
+    mh_cysts == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_cysts) ~ "No"
+  ))
+#diagnosed PID
+redcap <- redcap %>%
+  mutate(mh_pid = case_when(
+    mh_pid == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_pid) ~ "No"
+  ))
+#diagnosed constipation
+redcap <- redcap %>%
+  mutate(mh_constipation = case_when(
+    mh_constipation == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_constipation) ~ "No"
+  ))
+#diagnosed diarrhea
+redcap <- redcap %>%
+  mutate(mh_diarrhea = case_when(
+    mh_diarrhea == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_diarrhea) ~ "No"
+  ))
+#diagnosed uti
+redcap <- redcap %>%
+  mutate(mh_uti = case_when(
+    mh_uti == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_uti) ~ "No"
+  ))
+#diagnosed vaginal infection
+redcap <- redcap %>%
+  mutate(mh_vag_infection = case_when(
+    mh_vag_infection == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_vag_infection) ~ "No"
+  ))
+#diagnosed child pelvic problem
+redcap <- redcap %>%
+  mutate(mh_child_pelvic = case_when(
+    mh_child_pelvic == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_child_pelvic) ~ "No"
+  ))
+#diagnosed heart condition
+redcap <- redcap %>%
+  mutate(mh_heart = case_when(
+    mh_heart == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_heart) ~ "No"
+  ))
+#diagnosed lung condition
+redcap <- redcap %>%
+  mutate(mh_lung = case_when(
+    mh_lung == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_lung) ~ "No"
+  ))
+#diagnosed liver condition
+redcap <- redcap %>%
+  mutate(mh_liver = case_when(
+    mh_liver == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_liver) ~ "No"
+  ))
+#fibroid surg
+redcap <- redcap %>%
+  mutate(mh_fibroid_surg = case_when(
+    mh_fibroid_surg == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_fibroid_surg) ~ "No"
+  ))
+#vaginal surg
+redcap <- redcap %>%
+  mutate(mh_vaginal_surg = case_when(
+    mh_vaginal_surg == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_vaginal_surg) ~ "No"
+  ))
+#other pelvic surg
+redcap <- redcap %>%
+  mutate(mh_other_surg = case_when(
+    mh_other_surg == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(mh_other_surg) ~ "No"
+  ))
+
+#saving file
+write_csv(redcap, "Edited data files/redcap_post_table7.csv")
+
+#Defining vars for table 7
+redcap_table7 <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  rename(
+    `Diagnosed with persistent ovarian cysts` = mh_cysts, 
+    `Diagnosed with pelvic inflammatory disease` = mh_pid, 
+    `Diagnosed with chronic constipation` = mh_constipation, 
+    `Diagnosed with chronic diarrhea` = mh_diarrhea, 
+    `Diagnosed with repeated UTIs` = mh_uti, 
+    `Diagnosed with repeated vaginal infections` = mh_vag_infection, 
+    `Diagnosed with childhood pelvic health problem` = mh_child_pelvic, 
+    `Diagnosed with chronic heart condition (needing treatment)` = mh_heart, 
+    `Diagnosed with chronic lung condition (needing treatment)` = mh_lung, 
+    `Diagnosed with chronic liver condition (needing treatment)` = mh_liver, 
+    `Fibroid removal surgery` = mh_fibroid_surg, 
+    `Vaginal surgery` = mh_vaginal_surg, 
+    `Other major pelvic surgery` = mh_other_surg
+  )
+
+vars = c("Diagnosed with persistent ovarian cysts", "Diagnosed with pelvic inflammatory disease", 
+         "Diagnosed with chronic constipation", "Diagnosed with chronic diarrhea", 
+         "Diagnosed with repeated UTIs", "Diagnosed with repeated vaginal infections", 
+         "Diagnosed with childhood pelvic health problem", 
+         "Diagnosed with chronic heart condition (needing treatment)",
+         "Diagnosed with chronic lung condition (needing treatment)", 
+         "Diagnosed with chronic liver condition (needing treatment)", 
+         "Fibroid removal surgery", "Vaginal surgery", 
+         "Other major pelvic surgery"
+)
+
+#Creating summary table 6
+sum <- CreateTableOne(vars, data = redcap_table7, strata = "Group")
+
+sum_df <- as.data.frame(print(sum,
+                              printToggle = FALSE,
+                              quote = FALSE,
+                              noSpaces = TRUE,
+                              showAllLevels = FALSE))
+
+# Remove test columns
+cols_to_remove <- "test"
+sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
+
+#Creating table with comparisons for DYS and DYSB
+redcap_table7_p <- redcap_table7 %>%
+  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
+
+comp <- CreateTableOne(vars, data = redcap_table7_p, strata = "Group")
+
+comp_df <- as.data.frame(print(comp,
+                               printToggle = FALSE,
+                               quote = FALSE,
+                               noSpaces = TRUE,
+                               showAllLevels = FALSE)) %>%
+  dplyr::select("p")
+
+#merge summary and comparison tables
+table7 <- cbind(sum_df, p_dys_dysb = comp_df$p )
+
+#clean up
+table7 <- table7 %>%
+  rownames_to_column("Variable")
+
+table7 <- table7 %>%
+  mutate(Variable = gsub("\\.\\.\\.", " ", Variable), # replace ... with space
+         Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
+         Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
+         Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
+         Variable = trimws(Variable))                 # trim extra whitespace
+
+#building flextable
+table7 <- flextable(table7) %>%
+  set_header_labels(Variable = "") %>%        # removes "Variable" header
+  autofit() %>%                               # fits column widths to content
+  bold(part = "header") %>%                   # bold header row
+  hline_top(part = "header", 
+            border = fp_border(width = 1.5)) %>%   # line above header
+  hline_bottom(part = "header", 
+               border = fp_border(width = 1.5)) %>% # line below header
+  hline_bottom(part = "body", 
+               border = fp_border(width = 1.5)) %>% # line at bottom
+  font(fontname = "Arial", part = "all") %>%
+  fontsize(size = 9, part = "all")
+
+save_as_docx(table7, path = "Tables/Final/Table7_diagnoses.docx")
+
+
+##################
+##Table 8: Diary##
+################## 
+
+#recode vars
+#diary bleeding amount heaviest
+redcap_subset <- redcap %>%
+  group_by(record_id) %>%
+  summarize(
+    dd_bleeding_max = max(pmax(dd_bleeding, dd_bleeding_days, na.rm = TRUE), na.rm = TRUE),
+    .groups = "drop"
+  )
+
+redcap <- redcap %>%
+  left_join(
+    redcap_subset,
+    by = "record_id"
+  ) %>%
+  mutate(
+    dd_bleeding_max = ifelse(redcap_event_name == "virtual_assessment_arm_1", dd_bleeding_max, NA_real_)
+  )
+
+redcap <- redcap %>%
+  mutate(dd_bleeding_max = case_match(
+    dd_bleeding_max,
+    0 ~ "None",
+    1 ~ "Spotting",
+    2 ~ "Light", 
+    3 ~ "Moderate",
+    4 ~ "Heavy"
+  ))  
+
+#diary pain average
+redcap_subset_2 <- redcap %>%
+  group_by(record_id) %>%
+  filter(str_starts(redcap_event_name, "diary")) %>%
+  summarize(
+    dd_complete_count = n()
+  ) %>%
+  ungroup()
+
+redcap <- redcap %>%
+  left_join(
+    redcap_subset_2,
+    by = "record_id"
+  ) %>%
+  mutate(
+    dd_complete_count = ifelse(redcap_event_name == "virtual_assessment_arm_1", dd_complete_count, NA_real_)
+  )
+
+redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(dd_pain_sum = sum(dd_menstrual, dd_menstrual_days, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(dd_pain_sum = if_else(redcap_event_name == "virtual_assessment_arm_1", 
+                               dd_pain_sum, NA_real_))
+
+redcap <- redcap %>%
+  mutate(dd_avg_menstrual_pain = dd_pain_sum / dd_complete_count)
+
+#diary bleeding amount average, rounded to nearest whole number
+redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(dd_bleeding_sum = sum(dd_bleeding, dd_bleeding_days, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(dd_bleeding_sum = if_else(redcap_event_name == "virtual_assessment_arm_1", 
+                                   dd_bleeding_sum, NA_real_))
+
+redcap <- redcap %>%
+  mutate(dd_avg_bleeding = round(dd_bleeding_sum / dd_complete_count)) %>%
+  mutate(dd_avg_bleeding = case_match(
+    dd_avg_bleeding,
+    0 ~ "None",
+    1 ~ "Spotting",
+    2 ~ "Light", 
+    3 ~ "Moderate",
+    4 ~ "Heavy"
+  ))
+
+#number diary days with pain >3
+redcap_subset_3 <- redcap %>%
+  group_by(record_id) %>%
+  filter(str_starts(redcap_event_name, "diary")) %>%
+  mutate(dd_pain_3_day1 = ifelse(dd_menstrual > 3, 1, 0)) %>%
+  mutate(dd_pain_3_day2 = ifelse(redcap_event_name == "diary__day_2_arm_1" & 
+                                   dd_menstrual_days > 3, 1, 0)) %>%
+  mutate(dd_pain_3_day3 = ifelse(redcap_event_name == "diary__day_3_arm_1" & 
+                                   dd_menstrual_days > 3, 1, 0)) %>%
+  mutate(dd_pain_3_day4 = ifelse(redcap_event_name == "diary__day_4_arm_1" & 
+                                   dd_menstrual_days > 3, 1, 0)) %>%
+  mutate(dd_pain_3_day5 = ifelse(redcap_event_name == "diary__day_5_arm_1" & 
+                                   dd_menstrual_days > 3, 1, 0)) %>%
+  mutate(dd_pain_3 = sum(dd_pain_3_day1, dd_pain_3_day2, dd_pain_3_day3, 
+                         dd_pain_3_day4, dd_pain_3_day5, na.rm = TRUE)) %>%
+  slice_head() %>%
+  ungroup() %>%
+  select(1, 409) 
+
+redcap <- redcap %>%
+  left_join(
+    redcap_subset_3,
+    by = "record_id"
+  ) %>%
+  mutate(
+    dd_pain_3 = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                       dd_pain_3, NA_real_)
+  )
+
+#number diary days with moderate or heavy bleeding
+redcap_subset_4 <- redcap %>%
+  group_by(record_id) %>%
+  filter(str_starts(redcap_event_name, "diary")) %>%
+  mutate(dd_bleeding_m_h_day1 = ifelse(dd_bleeding > 2, 1, 0)) %>%
+  mutate(dd_bleeding_m_h_day2 = ifelse(redcap_event_name == "diary__day_2_arm_1" & 
+                                         dd_bleeding_days > 2, 1, 0)) %>%
+  mutate(dd_bleeding_m_h_day3 = ifelse(redcap_event_name == "diary__day_3_arm_1" & 
+                                         dd_bleeding_days > 2, 1, 0)) %>%
+  mutate(dd_bleeding_m_h_day4 = ifelse(redcap_event_name == "diary__day_4_arm_1" & 
+                                         dd_bleeding_days > 2, 1, 0)) %>%
+  mutate(dd_bleeding_m_h_day5 = ifelse(redcap_event_name == "diary__day_5_arm_1" & 
+                                         dd_bleeding_days > 2, 1, 0)) %>%
+  mutate(dd_bleeding_m_h = sum(dd_bleeding_m_h_day1, dd_bleeding_m_h_day2, 
+                               dd_bleeding_m_h_day3, dd_bleeding_m_h_day4, 
+                               dd_bleeding_m_h_day5, na.rm = TRUE)) %>%
+  slice_head() %>%
+  ungroup() %>%
+  select(1, 410) 
+
+redcap <- redcap %>%
+  left_join(
+    redcap_subset_4,
+    by = "record_id"
+  ) %>%
+  mutate(
+    dd_bleeding_m_h = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                             dd_bleeding_m_h, NA_real_)
+  )
+
+#number diary days with bleeding
+redcap_subset_5 <- redcap %>%
+  group_by(record_id) %>%
+  filter(str_starts(redcap_event_name, "diary")) %>%
+  mutate(dd_bleeding_day1 = ifelse(dd_bleeding > 0, 1, 0)) %>%
+  mutate(dd_bleeding_day2 = ifelse(redcap_event_name == "diary__day_2_arm_1" & 
+                                     dd_bleeding_days > 0, 1, 0)) %>%
+  mutate(dd_bleeding_day3 = ifelse(redcap_event_name == "diary__day_3_arm_1" & 
+                                     dd_bleeding_days > 0, 1, 0)) %>%
+  mutate(dd_bleeding_day4 = ifelse(redcap_event_name == "diary__day_4_arm_1" & 
+                                     dd_bleeding_days > 0, 1, 0)) %>%
+  mutate(dd_bleeding_day5 = ifelse(redcap_event_name == "diary__day_5_arm_1" & 
+                                     dd_bleeding_days > 0, 1, 0)) %>%
+  mutate(dd_bleeding_number = sum(dd_bleeding_day1, dd_bleeding_day2, 
+                                  dd_bleeding_day3, dd_bleeding_day4, 
+                                  dd_bleeding_day5, na.rm = TRUE)) %>%
+  slice_head() %>%
+  ungroup() %>%
+  select(1, 411) 
+
+redcap <- redcap %>%
+  left_join(
+    redcap_subset_5,
+    by = "record_id"
+  ) %>%
+  mutate(
+    dd_bleeding_number = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                                dd_bleeding_number, NA_real_)
+  )
+
+#diary max bowel pain
+redcap_subset_6 <- redcap %>%
+  group_by(record_id) %>%
+  summarize(
+    dd_bowel_max = max(pmax(dd_bowel, dd_bowel_days, na.rm = TRUE), na.rm = TRUE),
+    .groups = "drop"
+  )
+
+redcap <- redcap %>%
+  left_join(
+    redcap_subset_6,
+    by = "record_id"
+  ) %>%
+  mutate(
+    dd_bowel_max = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                          dd_bowel_max, NA_real_)
+  )
+
+#diary max bladder pain
+redcap_subset_7 <- redcap %>%
+  group_by(record_id) %>%
+  summarize(
+    dd_bladder_max = max(pmax(dd_bladder, dd_bladder_days, na.rm = TRUE), na.rm = TRUE),
+    .groups = "drop"
+  )
+
+redcap <- redcap %>%
+  left_join(
+    redcap_subset_7,
+    by = "record_id"
+  ) %>%
+  mutate(
+    dd_bladder_max = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                            dd_bladder_max, NA_real_)
+  )
+
+#diary days using medication, removes anyone without complete diary data
+redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(dd_medication = if (any(
+    (redcap_event_name == "diary__day_1_arm_1" & 
+     is.na(dd_nsaid_yn)) | 
+    (redcap_event_name == "virtual_assessment_arm_1" & 
+     dd_complete_count < 5)
+  ))  {
+    NA_real_
+  } else {
+    sum(dd_nsaid_yn, dd_acetaminophen_yn, dd_painreliever_yn, 
+        dd_painkillers_yn_days, na.rm = TRUE)
+  }) %>%
+  ungroup()
+
+redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(dd_medication_multi = case_when(
+    redcap_event_name == "diary__day_1_arm_1" ~ sum(dd_nsaid_yn, 
+                                                    dd_acetaminophen_yn, 
+                                                    dd_painreliever_yn, na.rm = TRUE)
+  )) %>%
+  mutate(dd_medication = case_when(
+    dd_medication_multi == 2 ~ dd_medication - 1, 
+    dd_medication_multi == 3 ~ dd_medication - 2, 
+    dd_medication_multi < 2 ~ dd_medication
+  )) %>%
+  mutate(
+    dd_medication = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                           dd_medication[redcap_event_name == "diary__day_1_arm_1"][1],
+                           NA
+    )
+  ) %>%
+  ungroup()
+
+#diary max menstrual pain 
+redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(
+    max_pain_bl = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                         max_pain_bl[redcap_event_name == "consent_ids_arm_1"][1],
+                         NA
+    )
+  ) %>%
+  ungroup()
+
+#diary avearge pelvic pain day before period 
+redcap <- redcap %>%
+  group_by(record_id) %>%
+  mutate(
+    dd_painbefore = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
+                           dd_painbefore[redcap_event_name == "diary__day_1_arm_1"][1],
+                           NA
+    )
+  ) %>%
+  ungroup()
+
+#saving file
+write_csv(redcap, "Edited data files/redcap_post_table8.csv") 
+
+
+#Defining vars for table 8
+redcap_table8 <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  rename(
+    `Days of moderate to heavy bleeding reported (5 days max)` = dd_bleeding_m_h,
+    `Average pelvic pain (24 hours before period onset)` = dd_painbefore,
+    `Days with menstrual pain > 3 (5 days max)` = dd_pain_3, 
+    `Average menstrual pain` = dd_avg_menstrual_pain, 
+    `Max menstrual pain` = max_pain_bl, 
+    `Max bowel pain` = dd_bowel_max, 
+    `Max bladder pain` = dd_bladder_max, 
+    `Days of pain reliever usage (5 days max)` = dd_medication
+  )
+
+
+vars = c( 
+         "Days of moderate to heavy bleeding reported (5 days max)", 
+         "Average pelvic pain (24 hours before period onset)", 
+         "Days with menstrual pain > 3 (5 days max)", 
+         "Average menstrual pain", 
+         "Max menstrual pain", 
+         "Max bowel pain", 
+         "Max bladder pain", 
+         "Days of pain reliever usage (5 days max)"
+)
+
+#Creating summary table 8
+sum <- CreateTableOne(vars, data = redcap_table8, strata = "Group")
+
+sum_df <- as.data.frame(print(sum,
+                              printToggle = FALSE,
+                              nonnormal = vars,
+                              quote = FALSE,
+                              noSpaces = TRUE,
+                              showAllLevels = FALSE))
+
+# Remove test columns
+cols_to_remove <- "test"
+sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
+
+#Creating table with comparisons for DYS and DYSB
+redcap_table8_p <- redcap_table8 %>%
+  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
+
+comp <- CreateTableOne(vars, data = redcap_table8_p, strata = "Group")
+
+comp_df <- as.data.frame(print(comp,
+                               printToggle = FALSE,
+                               nonnormal = vars,
+                               quote = FALSE,
+                               noSpaces = TRUE,
+                               showAllLevels = FALSE)) %>%
+  dplyr::select("p")
+
+#merge summary and comparison tables
+table8 <- cbind(sum_df, p_dys_dysb = comp_df$p )
+
+#clean up
+table8 <- table8 %>%
+  rownames_to_column("Variable")
+
+table8 <- table8 %>%
+  mutate(Variable = gsub("\\.\\.\\.", " ", Variable), # replace ... with space
+         Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
+         Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
+         Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
+         Variable = trimws(Variable))                 # trim extra whitespace
+
+#building flextable
+table8 <- flextable(table8) %>%
+  set_header_labels(Variable = "") %>%        # removes "Variable" header
+  autofit() %>%                               # fits column widths to content
+  bold(part = "header") %>%                   # bold header row
+  hline_top(part = "header", 
+            border = fp_border(width = 1.5)) %>%   # line above header
+  hline_bottom(part = "header", 
+               border = fp_border(width = 1.5)) %>% # line below header
+  hline_bottom(part = "body", 
+               border = fp_border(width = 1.5)) %>% # line at bottom
+  font(fontname = "Arial", part = "all") %>%
+  fontsize(size = 9, part = "all")
+
+save_as_docx(table8, path = "Tables/Final/Table8_diary.docx")
+
+########################
+##Table 9: Dyspareunia##
+########################
+
+#recode vars
+#pain with intercourse
+redcap <- redcap %>%
+  mutate(werf_c15 = case_match(
+    werf_c15, 
+    1 ~ "Yes", 
+    0 ~ "No"
+  ))
+#pain with intercourse during last intercourse
+redcap <- redcap %>%
+  mutate(werf_c17 = case_when(
+    werf_c15sexyesno == "No" ~ "No", 
+    werf_c17 == 1 ~ "No", 
+    werf_c17 == 2 ~ "Yes, during intercourse/penetration",
+    werf_c17 == 3 ~ "Yes, in the 24 hours following intercourse/penetration",
+    werf_c17 == 4 ~ "Yes, both during and in the 24 hours following intercourse/penetration"
+  ))
+#pain with intercourse severity 
+redcap <- redcap %>%
+  mutate(werf_c19 = case_when(
+    werf_c19 == 0 ~ 0,
+    werf_c19 == 1 ~ 1, 
+    werf_c19 == 2 ~ 2, 
+    werf_c19 == 3 ~ 3,
+    werf_c19 == 4 ~ 4, 
+    werf_c19 == 5 ~ 5, 
+    werf_c19 == 6 ~ 6, 
+    werf_c19 == 7 ~ 7, 
+    werf_c19 == 8 ~ 8, 
+    werf_c19 == 9 ~ 9, 
+    werf_c19 == 10 ~ 10, 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(werf_c19) ~ 0
+  ))
+#pain with intercourse frequency
+redcap <- redcap %>%
+  mutate(werf_c21 = case_when(
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(werf_c21) ~ "Never", 
+    record_id %in% c(7, 232, 544, 1069, 1541, 1893) ~ "Never", 
+    werf_c21 == 1 ~ "Occasionally (less than a quarter of times)", 
+    werf_c21 == 2 ~ "Often (a quarter to half of the times)", 
+    werf_c21 == 3 ~ "Usually (more than half of the times)", 
+    werf_c21 == 4 ~ "Always (every time)" 
+  ))
+#pain with intercourse causing intercourse to stop
+redcap <- redcap %>%
+  mutate(werf_c23 = case_when(
+    werf_c23 == 1 ~ "Yes", 
+    werf_c23 == 0 ~ "No", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(werf_c23) ~ "No"
+  ))
+#vulvodynia criteria
+redcap <- redcap %>%
+  mutate(`Meets criteria for Vulvodynia` = copc_vulvo_1 + copc_vulvo_2) %>%
+  mutate(`Meets criteria for Vulvodynia` = case_match(
+    `Meets criteria for Vulvodynia`, 
+    2 ~ "Yes", 
+    1 ~ "No", 
+    0 ~ "No"
+  ))
+
+#saving file
+write_csv(redcap, "Edited data files/redcap_post_table9.csv") 
+
+
+#Defining vars for table 9
+redcap_table9 <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  rename(
+    `Ever had dyspareunia`= werf_c15, 
+    `Age when dyspareunia began` = werf_c16, 
+    `Dyspareunia during most recent sexual intercourse` = werf_c17, 
+    `Max severity of dyspareunia during most recent sexual intercourse` = werf_c19, 
+    `Frequency of dyspareunia, last 12 months` = werf_c21, 
+    `Dyspareunia resulting in disruption of sexual intercourse` = werf_c23
+  )
+
+vars = c("Ever had dyspareunia", 
+         "Age when dyspareunia began", 
+         "Dyspareunia during most recent sexual intercourse", 
+         "Max severity of dyspareunia during most recent sexual intercourse", 
+         "Frequency of dyspareunia, last 12 months", 
+         "Dyspareunia resulting in disruption of sexual intercourse", 
+         "Meets criteria for Vulvodynia"
+)
+
+factor_vars <- c("Ever had dyspareunia", 
+                 "Dyspareunia during most recent sexual intercourse",
+                 "Frequency of dyspareunia, last 12 months", 
+                 "Dyspareunia resulting in disruption of sexual intercourse",
+                 "Meets criteria for Vulvodynia"
+)
+
+nonnormal_vars <- c("Age when dyspareunia began", 
+                    "Max severity of dyspareunia during most recent sexual intercourse"
+)
+
+#Creating summary table 9
+sum <- CreateTableOne(vars, data = redcap_table9, strata = "Group", factorVars = factor_vars)
+
+sum_df <- as.data.frame(print(sum,
+                              printToggle = FALSE,
+                              nonnormal = nonnormal_vars,
+                              quote = FALSE,
+                              noSpaces = TRUE,
+                              showAllLevels = FALSE))
+
+# Remove test columns
+cols_to_remove <- "test"
+sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
+
+#Creating table with comparisons for DYS and DYSB
+redcap_table9_p <- redcap_table9 %>%
+  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
+
+comp <- CreateTableOne(vars, data = redcap_table9_p, strata = "Group", factorVars = factor_vars)
+
+comp_df <- as.data.frame(print(comp,
+                               printToggle = FALSE,
+                               nonnormal = nonnormal_vars,
+                               quote = FALSE,
+                               noSpaces = TRUE,
+                               showAllLevels = FALSE)) %>%
+  dplyr::select("p")
+
+#merge summary and comparison tables
+table9 <- cbind(sum_df, p_dys_dysb = comp_df$p )
+
+#clean up
+table9 <- table9 %>%
+  rownames_to_column("Variable")
+
+table9 <- table9 %>%
+  mutate(Variable = gsub("\\.\\.\\.", " ", Variable), # replace ... with space
+         Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
+         Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
+         Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
+         Variable = trimws(Variable))                 # trim extra whitespace
+
+#building flextable
+table9 <- flextable(table9) %>%
+  set_header_labels(Variable = "") %>%        # removes "Variable" header
+  autofit() %>%                               # fits column widths to content
+  bold(part = "header") %>%                   # bold header row
+  hline_top(part = "header", 
+            border = fp_border(width = 1.5)) %>%   # line above header
+  hline_bottom(part = "header", 
+               border = fp_border(width = 1.5)) %>% # line below header
+  hline_bottom(part = "body", 
+               border = fp_border(width = 1.5)) %>% # line at bottom
+  font(fontname = "Arial", part = "all") %>%
+  fontsize(size = 9, part = "all")
+
+save_as_docx(table9, path = "Tables/Final/Table9_dyspareunia.docx")
+
+
+#################
+##Table 10: VBT##
+################# 
 
 #load in VBT urine pan volume spreadsheet
 urine_volumes <- read_excel("Raw files/URINE SAMPLE MEASURES_04.21.26.xlsx")
@@ -2553,18 +2624,10 @@ urine_volumes <- read_excel("Raw files/URINE SAMPLE MEASURES_04.21.26.xlsx")
 redcap <- redcap %>%
   left_join(urine_volumes, by = "record_id") %>%
   mutate(bl_urine_ml = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
-                      bl_urine_ml, NA))
+                              bl_urine_ml, NA))
 
-#count of responses urine measurements, uncommment to view
-#redcap_subset <- redcap %>%
-#  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
-#  select(record_id, Group, bl_urine_ml, vbt_flag)
-#redcap_subset %>%
-#  filter(vbt_flag == 0) %>%
-#  group_by(Group) %>%
-#  summarise(
-#    na_bl_urine_ml = sum(!is.na(bl_urine_ml))
-#  )
+#load in supp vars
+redcap_sup_vars <- read_csv("Raw files/EH22236CRAMPP2-VBTPredictiveFactors_DATA_2026-04-23_1230.csv")
 
 #merge in in-person bladder test fu pain from sup vars
 redcap_sup_ipb <- redcap_sup_vars %>%
@@ -2576,109 +2639,128 @@ redcap <- redcap %>%
   mutate(ipb_fupain = ifelse(redcap_event_name == "virtual_assessment_arm_1", 
                              ipb_fupain, NA))
 
-#count of responses ipb_fupain, uncommment to view
+#tampon test pain 
+redcap <- redcap %>%
+  mutate(tampon_test = case_when(
+    tampon_test == 99 ~ NA, 
+    tampon_test == 0 ~ 0,
+    tampon_test == 10 ~ 10, 
+    TRUE ~ tampon_test
+  ))
+
+#count of responses for tampon test, urine, and in person tests - uncomment to view
 #redcap_subset <- redcap %>%
 #  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
-#  select(record_id, Group, ipb_fupain, vbt_flag)
+#  select(record_id, Group, tampon_test, bl_urine_ml, ipb_fupain)
 #redcap_subset %>%
-#  filter(vbt_flag == 0) %>%
 #  group_by(Group) %>%
 #  summarise(
+#    tampon_test = sum(!is.na(tampon_test)),
+#    bl_urine_ml = sum(!is.na(bl_urine_ml)), 
 #    ipb_fupain = sum(!is.na(ipb_fupain))
 #  )
 
 #saving file
-write_csv(redcap, "Edited data files/redcap_post_supplementary_vars.csv") 
+write_csv(redcap, "Edited data files/redcap_post_table10.csv") 
 
-#defining vars for urine measures table, throwing out anyone flagged
-#for weird VBT times
-redcap_table_urine <- redcap %>%
+
+#Defining vars for table 10
+redcap_table10 <- redcap %>%
   filter(redcap_event_name == "virtual_assessment_arm_1") %>%
-  filter(vbt_flag == 0) %>%
-  rename(`Urine Volume (ml)` = bl_urine_ml)
+  rename(
+    `Time to FS (mins)` = time_drinking_fs_mins, 
+    `Time to FU (mins)` = time_drinking_fu_mins, 
+    `Time to MT (mins)` = time_drinking_mt_mins, 
+    `FS bladder urgency` = vbt_fs_urgency, 
+    `FS bladder pain` = vbt_fs_pain, 
+    `FU bladder urgency` = vbt_fu_urgency, 
+    `FU bladder pain` = vbt_fu_pain, 
+    `MT bladder urgency` = vbt_mt_urgency, 
+    `MT bladder pain` = vbt_mt_pain, 
+    `MT sharp pain` = vbt_sharp, 
+    `MT pressing pain` = vbt_pressing, 
+    `Capped out of bladder task` = capped_out, 
+    `Urine Volume (ml)` = bl_urine_ml, 
+    `Pain with tampon test` = tampon_test
+  )
 
-vars <- "Urine Volume (ml)"
+vars <- c("Time to FS (mins)",
+          "Time to FU (mins)",
+          "Time to MT (mins)",
+          "FS bladder urgency",
+          "FS bladder pain",
+          "FU bladder urgency",
+          "FU bladder pain",
+          "MT bladder urgency",
+          "MT bladder pain", 
+          "MT sharp pain",
+          "MT pressing pain",
+          "Capped out of bladder task", 
+          "Urine Volume (ml)",
+          "Pain with tampon test"
+)
 
-#creating table of urine volumes
-sum <- CreateTableOne(vars, data = redcap_table_urine, strata = "Group")
+#Creating summary table 10
+sum <- CreateTableOne(vars, data = redcap_table10, strata = "Group", 
+                      factorVars = "Capped out of bladder task")
 
 sum_df <- as.data.frame(print(sum,
                               nonnormal = vars,
                               printToggle = FALSE,
                               quote = FALSE,
                               noSpaces = TRUE,
-                              showAllLevels = TRUE, 
-                              pValues = FALSE))
+                              showAllLevels = FALSE))
+
+# Remove test columns
+cols_to_remove <- "test"
+sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
 
 #Creating table with comparisons for DYS and DYSB
-redcap_table_urine_p <- redcap_table_urine %>%
+redcap_table10_p <- redcap_table10 %>%
   filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
 
-comp <- CreateTableOne(vars, data = redcap_table_urine_p, strata = "Group")
+comp <- CreateTableOne(vars, data = redcap_table10_p, strata = "Group",
+                       factorVars = "Capped out of bladder task")
 
 comp_df <- as.data.frame(print(comp,
                                nonnormal = vars,
                                printToggle = FALSE,
                                quote = FALSE,
                                noSpaces = TRUE,
-                               showAllLevels = TRUE, 
-                               pValues = TRUE)) %>%
+                               showAllLevels = FALSE)) %>%
   dplyr::select("p")
 
 #merge summary and comparison tables
-table_urine <- cbind(sum_df, p_dys_dysb = comp_df$p )
+table10 <- cbind(sum_df, p_dys_dysb = comp_df$p )
 
-#reformat and save table
-#Step 1: save rownames as a column
-table_urine <- data.frame(rowname = rownames(table_urine), table_urine, row.names = NULL)
+#clean up
+table10 <- table10 %>%
+  rownames_to_column("Variable")
 
-# Step 2: Create an empty output data frame
-restructured_df <- data.frame()
-
-# Step 3: Loop through rows and insert variable name before its levels
-current_var <- NA
-
-for (i in seq_len(nrow(table_urine))) {
-  row_label <- table_urine$rowname[i]
-  if (!startsWith(row_label, "  ")) {
-    # Continuous variable row — use as is
-    current_var <- row_label
-    new_row <- table_urine[i, ]
-    new_row$Variable <- current_var
-    restructured_df <- bind_rows(restructured_df, new_row)
-  } else {
-    # Categorical level — insert variable name row if not already added
-    if (!identical(tail(restructured_df$Variable, 1), current_var)) {
-      var_row <- table_urine[i, ]
-      var_row[2:ncol(var_row)] <- ""  # clear values
-      var_row$Variable <- current_var
-      restructured_df <- bind_rows(restructured_df, var_row)
-    }
-    level_row <- table_urine[i, ]
-    level_row$Variable <- ""
-    restructured_df <- bind_rows(restructured_df, level_row)
-  }
-}
-
-# Step 4: Drop original rowname and reorder
-restructured_df <- restructured_df[, c("Variable", setdiff(names(restructured_df), c("rowname", "Variable")))]
-
+table10 <- table10 %>%
+  mutate(Variable = gsub("\\.\\.\\.", " ", Variable), # replace ... with space
+         Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
+         Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
+         Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
+         Variable = trimws(Variable))                 # trim extra whitespace
 
 #building flextable
-ft <- flextable(table_urine) %>%
-  bold(i = which(table_urine$Variable != ""), j = 1) %>%      # Bold variable rows
-  align(align = "left", part = "all") %>%                 # Align left
-  fontsize(size = 9, part = "all") %>%                    # Reduce font size
-  set_table_properties(layout = "fixed", width = 1) %>%   # Fixed width layout
-  width(j = 1, width = 2.25) %>%                          # Widen first column for variable names
-  width(j = 2:ncol(table_urine), width = 1.25) %>%            # Narrow group columns
-  theme_vanilla()
+table10 <- flextable(table10) %>%
+  set_header_labels(Variable = "") %>%        # removes "Variable" header
+  autofit() %>%                               # fits column widths to content
+  bold(part = "header") %>%                   # bold header row
+  hline_top(part = "header", 
+            border = fp_border(width = 1.5)) %>%   # line above header
+  hline_bottom(part = "header", 
+               border = fp_border(width = 1.5)) %>% # line below header
+  hline_bottom(part = "body", 
+               border = fp_border(width = 1.5)) %>% # line at bottom
+  font(fontname = "Arial", part = "all") %>%
+  fontsize(size = 9, part = "all")
 
-read_docx() %>%
-  body_add_flextable(ft) %>%
-  print(target = "Tables/Updated/VBT_Predictive_Factors_Table_Urine.docx")
+save_as_docx(table10, path = "Tables/Final/Table10_vbt.docx")
 
-
+#OLD
 #####################################
 ##FDR corrections for key variables##
 #####################################
