@@ -4,75 +4,62 @@
 library(readr)
 library(dplyr)
 library(ggplot2)
+library(ghibli)
+library(ragg)
 
 #set working directory
 setwd("~/Sarah work stuff/2025 Data Projects/VBT Predictive Factors CRAMPP2")
 
 #import latest dataset
-redcap <- read_csv("Edited data files/redcap_post_supplementary_vars.csv")
+redcap <- read_csv("Edited data files/redcap_post_table10.csv")
 
 ########################
 ##Histogram of FU pain##
 ########################
 
-redcap_noflag <- redcap %>%
-  filter(vbt_flag != 1)
-
-#option 1 - Mirror histogram
-histogram_v1 <- ggplot(redcap_noflag, aes(x = vbt_fu_pain, fill = Group)) +
-  geom_histogram(color="#e9ecef", position = 'identity', 
-                 binwidth = 5, boundary = 0) +
-  scale_fill_manual(values=c("#ff851b", "#d62839", "#0074D9")) +
-  labs(fill="")
-
-ggsave("plots/hist_fu_pain_v1.png", plot = histogram_v1)
-
-#option 2 - small multiple
-histogram_v2 <- ggplot(redcap_noflag, aes(x=vbt_fu_pain, fill=Group)) +
-  geom_histogram(color="#e9ecef", binwidth = 5, boundary = 0) +
-  scale_fill_manual(values=c("#ff851b", "#d62839", "#0074D9")) +
+histogram_fupain <- ggplot(redcap, aes(x = vbt_fu_pain, fill = Group)) +
+  geom_histogram(color = "white", linewidth = 0.1, position = 'identity', binwidth = 5, boundary = 0) + 
+  scale_fill_ghibli_d("YesterdayMedium", direction = -1) +
+  labs(fill="") +
+  labs(
+    x = "Pain at First Urge (0-100 VAS)",
+    y = "Count"
+  ) + 
+  theme_classic() +
   theme(
-    legend.position="none",
-    panel.spacing = unit(0.1, "lines"),
-    strip.text.x = element_text(size = 8)
-  ) +
-  facet_wrap(~Group)
+    text = element_text(family = "sans", size = 9),
+    legend.position = c(0.75, 0.75),
+    legend.title = element_blank()
+  )
 
-ggsave("plots/hist_fu_pain_v2.png", plot = histogram_v2)
-
+ggsave("Plots/figure1_hist.png", plot = histogram_fupain, width = 5, height = 4, 
+       dpi = 600, units = "in", device = "png")
 
 #############################
 ##Plot of FU pain VBT vs IP##
 #############################
 
-redcap_noflag_noHC <- redcap %>%
-  filter(vbt_flag != 1) %>%
+redcap_noHC <- redcap %>%
   filter(Group != "Pain Free Control")
 
-scatter_plot_fupain <- ggplot(redcap_noflag_noHC, aes(x = ipb_fupain, y = vbt_fu_pain, color = Group)) +
-  geom_point() +
-  scale_color_manual(values = c("#ff851b", "#d62839")) +
+scatter_plot_fupain <- ggplot(redcap_noHC, aes(x = ipb_fupain, y = vbt_fu_pain, color = Group)) +
+  geom_point(size = 2) +
+  scale_color_ghibli_d("YesterdayMedium", direction = -1) +
   scale_x_continuous(limits = c(0, 100)) +
   scale_y_continuous(limits = c(0, 100)) +
   labs(
-    x = "VBT first urge pain",
-    y = "In-person first urge pain",
-    title = "Virtual vs In-person Pain at First Urge to Void"
+    x = "Virtual - Pain at First Urge (0-100 VAS)",
+    y = "Laboratory - Pain at First Urge (0-100 VAS)"
   ) +
-  theme_bw() +
-  theme(legend.position = "bottom")
+  theme_classic() +
+  theme(
+    legend.position = c(0.75, 0.85), 
+    legend.margin = margin(6, 6, 6, 6),
+    legend.background = element_rect(color = "black", linewidth = 0.5, fill = "white")
+  )
 
-ggsave("plots/scat_fu_pain_.png", plot = scatter_plot_fupain)
-
-
-
-
-
-
-
-
-
-
+ggsave("Plots/figure2_scatt.png", plot = scatter_plot_fupain, width = 5, height = 4, 
+       dpi = 600, units = "in", device = "png")
 
 #############################################
 ##CPP measures box plots (GSRS, ICSI, GUPI)##
