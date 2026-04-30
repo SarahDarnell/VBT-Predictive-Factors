@@ -48,8 +48,8 @@ scatter_plot_fupain <- ggplot(redcap_noHC, aes(x = ipb_fupain, y = vbt_fu_pain, 
   scale_x_continuous(limits = c(0, 100)) +
   scale_y_continuous(limits = c(0, 100)) +
   labs(
-    x = "Virtual - Pain at First Urge (0-100 VAS)",
-    y = "Laboratory - Pain at First Urge (0-100 VAS)"
+    x = "Laboratory - Pain at First Urge (0-100 VAS)",
+    y = "Virtual - Pain at First Urge (0-100 VAS)"
   ) +
   theme_classic() +
   theme(
@@ -59,6 +59,28 @@ scatter_plot_fupain <- ggplot(redcap_noHC, aes(x = ipb_fupain, y = vbt_fu_pain, 
   )
 
 ggsave("Plots/figure2_scatt.png", plot = scatter_plot_fupain, width = 5, height = 4, 
+       dpi = 600, units = "in", device = "png")
+
+#version with dotted lines at 15
+scatter_plot_fupain_v2 <- ggplot(redcap_noHC, aes(x = ipb_fupain, y = vbt_fu_pain, color = Group)) +
+  geom_point(size = 2) +
+  scale_color_ghibli_d("YesterdayMedium", direction = -1) +
+  scale_x_continuous(limits = c(0, 100)) +
+  scale_y_continuous(limits = c(0, 100)) +
+  geom_vline(xintercept = 15, linetype = "dotted", color = "gray50") +
+  geom_hline(yintercept = 15, linetype = "dotted", color = "gray50") +
+  labs(
+    x = "Laboratory - Pain at First Urge (0-100 VAS)",
+    y = "Virtual - Pain at First Urge (0-100 VAS)"
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = c(0.75, 0.85), 
+    legend.margin = margin(6, 6, 6, 6),
+    legend.background = element_rect(color = "black", linewidth = 0.5, fill = "white")
+  )
+
+ggsave("Plots/figure3_scatt.png", plot = scatter_plot_fupain_v2, width = 5, height = 4, 
        dpi = 600, units = "in", device = "png")
 
 #############################################
