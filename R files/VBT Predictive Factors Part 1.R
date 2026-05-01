@@ -2648,6 +2648,15 @@ redcap <- redcap %>%
     TRUE ~ tampon_test
   ))
 
+#vbt understanding
+redcap <- redcap %>%
+  mutate(understanding_yn = case_when(
+    understanding_yn == 0 ~ "No",
+    understanding_yn == 1 ~ "Yes", 
+    redcap_event_name == "virtual_assessment_arm_1" & 
+      is.na(understanding_yn) ~ "Unknown"
+  ))
+
 #count of responses for tampon test, urine, and in person tests - uncomment to view
 #redcap_subset <- redcap %>%
 #  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
@@ -2681,7 +2690,9 @@ redcap_table10 <- redcap %>%
     `MT pressing pain` = vbt_pressing, 
     `Capped out of bladder task` = capped_out, 
     `Urine Volume (ml)` = bl_urine_ml, 
-    `Pain with tampon test` = tampon_test
+    `Pain with tampon test` = tampon_test, 
+    `Understanding of bladder task` = understanding_yn, 
+    `Focus during bladder task` = understanding_focus
   )
 
 vars <- c("Time to FS (mins)",
@@ -2697,7 +2708,9 @@ vars <- c("Time to FS (mins)",
           "MT pressing pain",
           "Capped out of bladder task", 
           "Urine Volume (ml)",
-          "Pain with tampon test"
+          "Pain with tampon test", 
+          "Understanding of bladder task",
+          "Focus during bladder task" 
 )
 
 #Creating summary table 10
