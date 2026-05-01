@@ -132,7 +132,7 @@ ggplot(redcap, aes(x = Group, y = gupi_bl)) +
 ##############################################
 
 #uncomment to save output
-sink("Logs/3.2.26/cor_matrix_log.txt")
+sink("Logs/5.1.26/cor_matrix_log.txt")
 
 #subset needed variables
 correlation_subset <- redcap %>%
