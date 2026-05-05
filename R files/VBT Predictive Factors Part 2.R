@@ -132,11 +132,12 @@ ggplot(redcap, aes(x = Group, y = gupi_bl)) +
 ##############################################
 
 #uncomment to save output
-sink("Logs/5.1.26/cor_matrix_log.txt")
+sink("Logs/5.26/cor_matrix_subset_log.txt")
 
 #subset needed variables
 correlation_subset <- redcap %>%
   filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  filter(Group == "Dysmenorrhea" | Group == "Dysmenorrhea plus Bladder Pain") %>%
   select(record_id, vbt_fu_pain, bl_urine_ml, 
          gupi_bl, icsi_bl, gsrs_bl, mcgill_1,
          mcgill_2, mcgill_3)
@@ -147,10 +148,6 @@ vars <- correlation_subset %>% select(vbt_fu_pain, bl_urine_ml,
 
 #spearman matrix
 cor(vars, method = "spearman", use = "pairwise.complete.obs")
-
-
-#pearson matrix
-cor(vars, method = "pearson", use = "pairwise.complete.obs")
 
 sink()
 
