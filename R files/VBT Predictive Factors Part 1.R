@@ -2829,6 +2829,25 @@ redcap <- redcap %>%
     )
   )
 
+#subset for easy viewing
+redcap_bodymap <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  select(record_id, 
+         Group, 
+         copcy_bodymap_ans1___1:copc_bodymap_ans2___23, 
+         bodymap_site_a, 
+         bodymap_site_b,
+         bodymap_site_c,
+         bodymap_site_d,
+         bodymap_site_e,
+         bodymap_site_f,
+         bodymap_site_g,
+         bodymap_7_sum,
+         copc_sum)
+
+#saving file
+write_csv(redcap, "Edited data files/redcap_post_table10.csv")
+
 #uncomment to save output
 sink("Logs/5.26/bodymap_7_log.txt")
 
@@ -2854,6 +2873,7 @@ redcap_bodymap_no_C <- redcap %>%
 kruskal.test(bodymap_7_sum ~ Group, data = redcap_bodymap_no_C)
 
 sink()
+
 
 #OLD
 #####################################
