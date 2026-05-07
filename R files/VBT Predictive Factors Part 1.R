@@ -2773,6 +2773,88 @@ table10 <- flextable(table10) %>%
 
 save_as_docx(table10, path = "Tables/Final/Table10_vbt.docx")
 
+
+################################
+##Additional changes requested##
+################################
+
+#Mutate 23 point bodymap to 7 point
+redcap <- redcap %>%
+  mutate(
+    bodymap_site_a = if_else(
+      redcap_event_name == "virtual_assessment_arm_1" & 
+        copcy_bodymap_ans1___1 == 1 |
+        copcy_bodymap_ans1___2 == 1 |
+        copcy_bodymap_ans1___3 == 1 |
+        copcy_bodymap_ans1___4 == 1 |
+        copc_bodymap_ans2___20 == 1, 1, 0), 
+    bodymap_site_b = if_else(
+      redcap_event_name == "virtual_assessment_arm_1" & 
+        copcy_bodymap_ans1___5 == 1 |
+        copcy_bodymap_ans1___8 == 1 |
+        copcy_bodymap_ans1___10 == 1, 1, 0), 
+    bodymap_site_c = if_else(
+      redcap_event_name == "virtual_assessment_arm_1" & 
+        copcy_bodymap_ans1___7 == 1 |
+        copcy_bodymap_ans1___9 == 1 |
+        copcy_bodymap_ans1___12 == 1, 1, 0), 
+    bodymap_site_d = if_else(
+      redcap_event_name == "virtual_assessment_arm_1" & 
+        copc_bodymap_ans2___13 == 1 |
+        copc_bodymap_ans2___16 == 1 |
+        copc_bodymap_ans2___18 == 1, 1, 0), 
+    bodymap_site_e = if_else(
+      redcap_event_name == "virtual_assessment_arm_1" & 
+        copc_bodymap_ans2___15 == 1 |
+        copc_bodymap_ans2___17 == 1 |
+        copc_bodymap_ans2___19 == 1, 1, 0), 
+    bodymap_site_f = if_else(
+      redcap_event_name == "virtual_assessment_arm_1" & 
+        copcy_bodymap_ans1___6 == 1 |
+        copcy_bodymap_ans1___11 == 1 |
+        copc_bodymap_ans2___14 == 1, 1, 0), 
+    bodymap_site_g = if_else(
+      redcap_event_name == "virtual_assessment_arm_1" & 
+        copc_bodymap_ans2___21 == 1 |
+        copc_bodymap_ans2___22 == 1 |
+        copc_bodymap_ans2___23 == 1, 1, 0), 
+    bodymap_7_sum = case_when(
+      redcap_event_name == "virtual_assessment_arm_1" ~ bodymap_site_a +
+                                                        bodymap_site_b + 
+                                                        bodymap_site_c +
+                                                        bodymap_site_d + 
+                                                        bodymap_site_e + 
+                                                        bodymap_site_f + 
+                                                        bodymap_site_g
+    )
+  )
+
+#uncomment to save output
+sink("Logs/5.26/bodymap_7_log.txt")
+
+#Get median values of bodymap_7_sum by group
+redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  group_by(Group) %>%
+  dplyr::summarize(median = median(bodymap_7_sum), 
+                   quantile_25 = quantile(bodymap_7_sum, 0.25), 
+                   quantile_75 = quantile(bodymap_7_sum, 0.75)
+  )
+
+#Kruskal Wallis test
+redcap_bodymap <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1")
+
+kruskal.test(bodymap_7_sum ~ Group, data = redcap_bodymap)
+
+redcap_bodymap_no_C <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1" & 
+  Group != "Pain Free Control")
+
+kruskal.test(bodymap_7_sum ~ Group, data = redcap_bodymap_no_C)
+
+sink()
+
 #OLD
 #####################################
 ##FDR corrections for key variables##
