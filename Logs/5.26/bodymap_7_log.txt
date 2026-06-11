@@ -8,11 +8,11 @@
 	Kruskal-Wallis rank sum test
 
 data:  bodymap_7_sum by Group
-Kruskal-Wallis chi-squared = 18.036, df = 2, p-value = 0.0001212
+Kruskal-Wallis chi-squared = 18.448, df = 2, p-value = 9.862e-05
 
 
 	Kruskal-Wallis rank sum test
 
 data:  bodymap_7_sum by Group
-Kruskal-Wallis chi-squared = 2.3423, df = 1, p-value = 0.1259
+Kruskal-Wallis chi-squared = 2.7021, df = 1, p-value = 0.1002
 

@@ -630,15 +630,15 @@ redcap <- redcap %>%
 
 
 #count of responses for mh23a and mh27b, uncomment to view
-#redcap_subset <- redcap %>%
-#  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
-#  select(record_id, Group, mh23a, mh27b)
-#redcap_subset %>%
-#  group_by(Group) %>%
-#  summarise(
-#    mh23a = sum(!is.na(mh23a)),
-#    mh27b = sum(!is.na(mh27b))
-#  )
+redcap_subset <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  select(record_id, Group, mh23a, mh27b)
+redcap_subset %>%
+  group_by(Group) %>%
+  summarise(
+    mh23a = sum(!is.na(mh23a)),
+    mh27b = sum(!is.na(mh27b))
+  )
 
 #saving file
 write_csv(redcap, "Edited data files/redcap_post_table2.csv")  
@@ -683,7 +683,8 @@ vars <- c("Period in the last 6 months?", "Ever had painful periods?",
           "Average pain during worst day of period when taking acetaminophen pain relievers in last 3 months (VAS)", 
           "Menstrual Cycle Regularity", "Menstrual Cycle Length", 
           "Menstrual Cycle Phase at time of Assessment", "Average bleeding days per period", 
-          "Used hormonal therapy to treat menstrual pain"
+          "Used hormonal therapy to treat menstrual pain",
+          "Bladder, bowel, or abdomino-pelvic pain outside of period in last 3 months"
           )
 
 factor_vars <- c("Period in the last 6 months?", "Ever had painful periods?", 
@@ -2708,16 +2709,16 @@ redcap <- redcap %>%
   ))
 
 #count of responses for tampon test, urine, and in person tests - uncomment to view
-#redcap_subset <- redcap %>%
-#  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
-#  select(record_id, Group, tampon_test, bl_urine_ml, ipb_fupain)
-#redcap_subset %>%
-#  group_by(Group) %>%
-#  summarise(
-#    tampon_test = sum(!is.na(tampon_test)),
-#    bl_urine_ml = sum(!is.na(bl_urine_ml)), 
-#    ipb_fupain = sum(!is.na(ipb_fupain))
-#  )
+redcap_subset <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  select(record_id, Group, tampon_test, bl_urine_ml, ipb_fupain)
+redcap_subset %>%
+  group_by(Group) %>%
+  summarise(
+    tampon_test = sum(!is.na(tampon_test)),
+    bl_urine_ml = sum(!is.na(bl_urine_ml)), 
+    ipb_fupain = sum(!is.na(ipb_fupain))
+  )
 
 #saving file
 write_csv(redcap, "Edited data files/redcap_post_table10.csv") 
