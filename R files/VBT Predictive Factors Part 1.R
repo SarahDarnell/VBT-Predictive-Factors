@@ -231,7 +231,7 @@ redcap <- redcap %>%
     redcap_event_name == "virtual_assessment_arm_1" &
       group_arm2 != "Pain Free Control" &
       is.na(vbt_fu_pain) & 
-      is.na(vbt_mt_pain) ~ "Unsuable",
+      is.na(vbt_mt_pain) ~ "Unusable",
     redcap_event_name == "virtual_assessment_arm_1" &
       group_arm2 != "Pain Free Control" &
       is.na(vbt_fu_pain) & 
@@ -248,11 +248,6 @@ redcap <- redcap %>%
       group_arm2 != Group ~ 1
   ))
 
-#visually inspect
-redcap_groups <- redcap %>%
-  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
-  select(record_id, group_arm2, Group, group_mismatch, vbt_flag, vbt_fu_pain, vbt_mt_pain)
-
 #add group and vbt flag to other rows
 redcap <- redcap %>%
   group_by(record_id) %>%
@@ -260,6 +255,22 @@ redcap <- redcap %>%
     Group = first(na.omit(Group)),
     vbt_flag = first(na.omit(vbt_flag))) %>%
   ungroup()
+
+#visually inspect grey zone periodic bladder times
+redcap_groups <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1" & (Group == "Grey zone" |
+           Group == "Unusable")) %>%
+  select(record_id, group_arm2, Group, group_mismatch, vbt_flag, vbt_fu_pain, 
+         vbt_mt_pain, vbt_time_drinking, vbt_mt_time, time_drinking_mt_mins, 
+         pbr_1:pbr_5_pain)
+#620 is a true cap-out with periodic pain ratings <5 == DYS instead of unusable
+#2487 fu time matches to periodic rating 3, with pain of 19 == DYSB instead of unusable
+redcap <- redcap %>%
+  mutate(Group = case_when(
+    record_id == 620 ~ "Dysmenorrhea", 
+    record_id == 2487 ~ "Dysmenorrhea plus Bladder Pain",
+    .default = Group
+  ))
 
 #remove rows with flagged vbts or groups that are unusable or grey zone
 redcap <- redcap %>%
@@ -433,6 +444,20 @@ redcap <- redcap %>%
     6 ~ "$150,000 or greater", 
     7 ~ "Unknown"
   )) 
+#medical insurance
+redcap <- redcap %>%
+  mutate(mh_insurance_yn = case_match(
+    mh_insurance_yn,
+    1 ~ "Yes", 
+    0 ~ "No"
+  ))
+#regular physician
+redcap <- redcap %>%
+  mutate(mh_physician_yn = case_match(
+    mh_physician_yn,
+    1 ~ "Yes", 
+    0 ~ "No"
+  ))
   
 #saving file
 write_csv(redcap, "Edited data files/redcap_post_table1.csv")  
@@ -445,19 +470,29 @@ redcap_table1 <- redcap %>%
     Education = mh5_education, 
     `Nicotine Usage` = mh_smoking, 
     `THC (Marijuana) Usage` = ms_thc, 
-    `Ever had a problem with drugs or alcohol` = mh9b1, 
+    `Prior Problem with Drugs or Alcohol` = mh9b1, 
     `Given Birth` = birth_yn,
-    Income = mh_income
-  )
+     Income = mh_income,
+    `Has Medical Insurance` = mh_insurance_yn,
+    `Has a Regular Physician` = mh_physician_yn
+  ) %>%
+  mutate(Group = case_when(
+    Group == "Dysmenorrhea" ~ "Dysmenorrhea",
+    Group == "Dysmenorrhea plus Bladder Pain" ~ "DYSB",
+    Group == "Pain Free Control" ~ "Control"
+  )) %>%
+  mutate(Group = factor(Group, levels = c("Control", "Dysmenorrhea", "DYSB")))
 
 vars <- c("Age", "Gender", "Race", "Ethnicity", 
-          "Education", "Employment", "Income", "Given Birth", "Nicotine Usage", "THC (Marijuana) Usage", 
-          "Ever had a problem with drugs or alcohol")
+          "Education", "Employment", "Income", "Has Medical Insurance", 
+          "Has a Regular Physician", 
+          "Given Birth", "Nicotine Usage", "THC (Marijuana) Usage", 
+          "Prior Problem with Drugs or Alcohol")
 factor_vars <- c("Gender", "Race", "Ethnicity", 
                  "Education", "Employment", "Income", "Given Birth", 
                  "Nicotine Usage", "THC (Marijuana) Usage", 
-                 "Ever had a problem with drugs or alcohol")
-
+                 "Prior Problem with Drugs or Alcohol",
+                 "Has Medical Insurance", "Has a Regular Physician")
 
 #Creating table
 demo <- CreateTableOne(vars, data = redcap_table1, factorVars = factor_vars, 
@@ -479,7 +514,10 @@ demo_df <- demo_df %>%
          Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
          Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
          Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
-         Variable = trimws(Variable))                 # trim extra whitespace
+         Variable = trimws(Variable),                 # trim extra whitespace
+         Control = gsub(")", "%)", Control),          # add % symbol
+         Dysmenorrhea = gsub(")", "%)", Dysmenorrhea),# add % symbol
+         DYSB = gsub(")", "%)", DYSB))                # add % symbol
 
 # Remove p-value/test columns
 cols_to_remove <- c("p", "test")
@@ -500,20 +538,13 @@ demo_ft <- flextable(demo_df) %>%
   font(fontname = "Arial", part = "all") %>%
   fontsize(size = 9, part = "all")
 
-save_as_docx(demo_ft, path = "Tables/Final/Table1_demographics.docx")
+save_as_docx(demo_ft, path = "Tables/Final/Revised/Table1_demographics.docx")
 
-######################################################################
-##Table 2: Menstrual Pain Characteristics and Hormonal Therapy Usage##
-######################################################################
+###########################################
+##Table 2: Menstrual Pain Characteristics##
+###########################################
 
 #recode variables
-#period in last 6 months
-redcap <- redcap %>%
-  mutate(mh_period_6months = case_match(
-    mh_period_6months, 
-    1 ~ "Yes", 
-    0 ~ "No"
-  )) 
 #painful periods
 redcap <- redcap %>%
   mutate(mh18_painfulperiodsyn = case_match(
@@ -561,7 +592,7 @@ redcap <- redcap %>%
     2 ~ "22-35 days", 
     3 ~ "Greater than 35 days"
   ))
-#menstrual phase
+#menstrual phase -- calculated here but moved to table 2 (previously table 10)
 redcap <- redcap %>%
   mutate(
     vbt_instructions_and_urgency_zones_timestamp = 
@@ -597,6 +628,7 @@ redcap <- redcap %>%
     0 ~ "No"
   ))
 
+
 #count of responses for mh23a and mh27b, uncomment to view
 #redcap_subset <- redcap %>%
 #  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
@@ -631,7 +663,13 @@ redcap_table2 <- redcap %>%
     `Average bleeding days per period` = mh27,
     `Used hormonal therapy to treat menstrual pain` = mh28,
     `Bladder, bowel, or abdomino-pelvic pain outside of period in last 3 months` = mh30
-  )
+  ) %>%
+  mutate(Group = case_when(
+    Group == "Dysmenorrhea" ~ "Dysmenorrhea",
+    Group == "Dysmenorrhea plus Bladder Pain" ~ "DYSB",
+    Group == "Pain Free Control" ~ "Control"
+  )) %>%
+  mutate(Group = factor(Group, levels = c("Control", "Dysmenorrhea", "DYSB")))
 
 vars <- c("Period in the last 6 months?", "Ever had painful periods?", 
           "Painful periods at time of menarche?", 
@@ -645,14 +683,14 @@ vars <- c("Period in the last 6 months?", "Ever had painful periods?",
           "Average pain during worst day of period when taking acetaminophen pain relievers in last 3 months (VAS)", 
           "Menstrual Cycle Regularity", "Menstrual Cycle Length", 
           "Menstrual Cycle Phase at time of Assessment", "Average bleeding days per period", 
-          "Used hormonal therpary to treat menstrual pain", 
-          "Bladder, bowel, or abdomino-pelvic pain outside of period in last 3 months")
+          "Used hormonal therapy to treat menstrual pain"
+          )
 
 factor_vars <- c("Period in the last 6 months?", "Ever had painful periods?", 
                  "Painful periods at time of menarche?", "Menstrual Cycle Regularity", 
                  "Menstrual Cycle Length", "Menstrual Cycle Phase at time of Assessment",
-                  "Used hormonal therpary to treat menstrual pain", 
-                  "Bladder, bowel, or abdomino-pelvic pain outside of period in last 3 months")
+                  "Used hormonal therapy to treat menstrual pain", 
+                 "Bladder, bowel, or abdomino-pelvic pain outside of period in last 3 months")
 
 #Creating summary table 2
 sum <- CreateTableOne(vars, data = redcap_table2, factorVars = factor_vars, 
@@ -679,7 +717,8 @@ sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
 
 #Creating table with comparisons for DYS and DYSB
 redcap_table2_p <- redcap_table2 %>%
-  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
+  filter(Group %in% c("Dysmenorrhea", "DYSB")) %>%
+  mutate(Group = as.character(Group))
 
 comp <- CreateTableOne(vars, data = redcap_table2_p, factorVars = factor_vars, 
                        strata = "Group")
@@ -713,7 +752,10 @@ table2 <- table2 %>%
          Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
          Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
          Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
-         Variable = trimws(Variable))                 # trim extra whitespace
+         Variable = trimws(Variable),                 # trim extra whitespace
+         Control = gsub(")", "%)", Control),          # add % symbol
+         Dysmenorrhea = gsub(")", "%)", Dysmenorrhea),# add % symbol
+         DYSB = gsub(")", "%)", DYSB))                # add % symbol
 
 #building flextable
 table2 <- flextable(table2) %>%
@@ -746,20 +788,6 @@ redcap <- redcap %>%
   mutate(across(all_of(logicals), as.numeric))
 
 #recode variables
-#medical insurance
-redcap <- redcap %>%
-  mutate(mh_insurance_yn = case_match(
-    mh_insurance_yn,
-    1 ~ "Yes", 
-    0 ~ "No"
-  ))
-#regular physician
-redcap <- redcap %>%
-  mutate(mh_physician_yn = case_match(
-    mh_physician_yn,
-    1 ~ "Yes", 
-    0 ~ "No"
-  ))
 #diagnosed anxiety
 redcap <- redcap %>%
   mutate(mh_anx = case_when(
@@ -831,8 +859,6 @@ write_csv(redcap, "Edited data files/redcap_post_table3.csv")
 redcap_table3 <- redcap %>%
   filter(redcap_event_name == "virtual_assessment_arm_1") %>%
   rename(
-    `Has Medical Insurance` = mh_insurance_yn,
-    `Has a Regular Physician` = mh_physician_yn, 
     `Diagnosed with anxiety` = mh_anx, 
     `Diagnosed with depression` = mh_dep, 
     `Diagnosed with kidney stones` = mh_kidney_stone, 
@@ -842,14 +868,20 @@ redcap_table3 <- redcap %>%
     `Used ibuprofen regularly in past year to treat menstrual pain` = mh_ibuprofen_yn, 
     `Used other anti-inflammatory regularly in past year to treat menstrual pain` = mh_othermeds_yn, 
     `Used antidepressants regularly in past year (for any indication)` = mh_antidepressants
-  )
+  ) %>%
+  mutate(Group = case_when(
+    Group == "Dysmenorrhea" ~ "Dysmenorrhea",
+    Group == "Dysmenorrhea plus Bladder Pain" ~ "DYSB",
+    Group == "Pain Free Control" ~ "Control"
+  )) %>%
+  mutate(Group = factor(Group, levels = c("Control", "Dysmenorrhea", "DYSB")))
 
-vars = c("Has Medical Insurace", "Has a Regular Physician", "Diagnosed with anxiety", 
+vars = c("Diagnosed with anxiety", 
          "Diagnosed with depression", "Diagnosed with kidney stones", 
          "Diagnosed with endometriosis (w/o chronic pain)", "Diagnosed with fibroids", 
-         "Used acetaminophen regulary in past year to treat menstrual pain", 
-         "Used ibuprofen regulary in past year to treat menstrual pain", 
-         "Used other anti-inflammatory regulary in past year to treat menstrual pain", 
+         "Used acetaminophen regularly in past year to treat menstrual pain", 
+         "Used ibuprofen regularly in past year to treat menstrual pain", 
+         "Used other anti-inflammatory regularly in past year to treat menstrual pain", 
          "Used antidepressants regularly in past year (for any indication)"
          )
 
@@ -869,7 +901,8 @@ sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
 
 #Creating table with comparisons for DYS and DYSB
 redcap_table3_p <- redcap_table3 %>%
-  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
+  filter(Group %in% c("Dysmenorrhea", "DYSB")) %>%
+  mutate(Group = as.character(Group))
 
 comp <- CreateTableOne(vars, data = redcap_table3_p, factorVars = vars, 
                        strata = "Group")
@@ -893,7 +926,10 @@ table3 <- table3 %>%
          Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
          Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
          Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
-         Variable = trimws(Variable))                 # trim extra whitespace
+         Variable = trimws(Variable),                 # trim extra whitespace
+         Control = gsub(")", "%)", Control),          # add % symbol
+         Dysmenorrhea = gsub(")", "%)", Dysmenorrhea),# add % symbol
+         DYSB = gsub(")", "%)", DYSB))                # add % symbol
 
 #building flextable
 table3 <- flextable(table3) %>%
@@ -1013,7 +1049,13 @@ redcap_table4 <- redcap %>%
     `Sensitivity to bright lights` = mh_gss3, 
     `Sensitivity to chemicals` = mh_gss4,
     `Ever had sexual intercourse` = werf_c15sexyesno
-  )
+  ) %>%
+  mutate(Group = case_when(
+    Group == "Dysmenorrhea" ~ "Dysmenorrhea",
+    Group == "Dysmenorrhea plus Bladder Pain" ~ "DYSB",
+    Group == "Pain Free Control" ~ "Control"
+  )) %>%
+  mutate(Group = factor(Group, levels = c("Control", "Dysmenorrhea", "DYSB")))
 
    
 vars = c("Average NMPP, last 7 days", 
@@ -1066,7 +1108,8 @@ sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
 
 #Creating table with comparisons for DYS and DYSB
 redcap_table4_p <- redcap_table4 %>%
-  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
+  filter(Group %in% c("Dysmenorrhea", "DYSB")) %>%
+  mutate(Group = as.character(Group))
 
 comp <- CreateTableOne(vars, data = redcap_table4_p, factorVars = factor_vars, 
                        strata = "Group")
@@ -1091,7 +1134,10 @@ table4 <- table4 %>%
          Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
          Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
          Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
-         Variable = trimws(Variable))                 # trim extra whitespace
+         Variable = trimws(Variable),                 # trim extra whitespace
+         Control = gsub(")", "%)", Control),          # add % symbol
+         Dysmenorrhea = gsub(")", "%)", Dysmenorrhea),# add % symbol
+         DYSB = gsub(")", "%)", DYSB))                # add % symbol
 
 #building flextable
 table4 <- flextable(table4) %>%
@@ -1557,7 +1603,13 @@ redcap_table5 <- redcap %>%
     `GSRS` = gsrs_bl, 
     `ICSI` = icsi_bl, 
     `GUPI` = gupi_bl
-  )
+  ) %>%
+  mutate(Group = case_when(
+    Group == "Dysmenorrhea" ~ "Dysmenorrhea",
+    Group == "Dysmenorrhea plus Bladder Pain" ~ "DYSB",
+    Group == "Pain Free Control" ~ "Control"
+  )) %>%
+  mutate(Group = factor(Group, levels = c("Control", "Dysmenorrhea", "DYSB")))
 
 vars <- c("Promis physical function", 
           "Promis anxiety", 
@@ -1625,7 +1677,8 @@ sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
 
 #Creating table with comparisons for DYS and DYSB
 redcap_table5_p <- redcap_table5 %>%
-  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
+  filter(Group %in% c("Dysmenorrhea", "DYSB")) %>%
+  mutate(Group = as.character(Group))
 
 comp <- CreateTableOne(vars, data = redcap_table5_p, strata = "Group")
 
@@ -1649,7 +1702,10 @@ table5 <- table5 %>%
          Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
          Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
          Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
-         Variable = trimws(Variable))                 # trim extra whitespace
+         Variable = trimws(Variable),                 # trim extra whitespace
+         Control = gsub(")", "%)", Control),          # add % symbol
+         Dysmenorrhea = gsub(")", "%)", Dysmenorrhea),# add % symbol
+         DYSB = gsub(")", "%)", DYSB))                # add % symbol
 
 #building flextable
 table5 <- flextable(table5) %>%
@@ -1696,46 +1752,22 @@ redcap <- redcap %>%
     redcap_event_name == "virtual_assessment_arm_1" & 
       is.na(mh_ring) ~ "Have never taken"
   )) 
-#implant
+#progestin
 redcap <- redcap %>%
-  mutate(mh_implant = case_when(
-    mh_implant == 1 ~ "Currently taking",
-    mh_implant == 2 ~ "Have taken in the past",
+  mutate(mh_progestin = case_when(
+    mh_implant == 1 | mh_shot == 1 | mh_p_pills == 1 ~ "Currently taking",
+    mh_implant == 2 | mh_shot == 2 | mh_p_pills == 2 ~ "Have taken in the past",
     redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_implant) ~ "Have never taken"
+      (is.na(mh_implant) | is.na(mh_shot) | is.na(mh_p_pills)) ~ "Have never taken"
   )) 
-#shot
+#other hormonal meds
 redcap <- redcap %>%
-  mutate(mh_shot = case_when(
-    mh_shot == 1 ~ "Currently taking",
-    mh_shot == 2 ~ "Have taken in the past",
+  mutate(mh_other_hormonal = case_when(
+    mh_gnrh_agonist == 1 | mh_gnrh_antagonist == 1 | mh_aromatase == 1 | mh_hormonal_other == 1 ~ "Currently taking",
+    mh_gnrh_agonist == 2 | mh_gnrh_antagonist == 2 | mh_aromatase == 2 | mh_hormonal_other == 2 ~ "Have taken in the past",
     redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_shot) ~ "Have never taken"
-  )) 
-#pills
-redcap <- redcap %>%
-  mutate(mh_p_pills = case_when(
-    mh_p_pills == 1 ~ "Currently taking",
-    mh_p_pills == 2 ~ "Have taken in the past",
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_p_pills) ~ "Have never taken"
-  )) 
-#gnrh agonist
-redcap <- redcap %>%
-  mutate(mh_gnrh_agonist = case_when(
-    mh_gnrh_agonist == 1 ~ "Currently taking",
-    mh_gnrh_agonist == 2 ~ "Have taken in the past",
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_gnrh_agonist) ~ "Have never taken"
+      (is.na(mh_gnrh_agonist) | is.na(mh_gnrh_antagonist) | is.na(mh_aromatase) | is.na(mh_hormonal_other)) ~ "Have never taken"
   ))
-#gnrh antagonist
-redcap <- redcap %>%
-  mutate(mh_gnrh_antagonist = case_when(
-    mh_gnrh_antagonist == 1 ~ "Currently taking",
-    mh_gnrh_antagonist == 2 ~ "Have taken in the past",
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_gnrh_antagonist) ~ "Have never taken"
-  )) 
 #hormonal iud
 redcap <- redcap %>%
   mutate(mh_iudh = case_when(
@@ -1751,22 +1783,6 @@ redcap <- redcap %>%
     mh_iudc == 2 ~ "Have taken in the past",
     redcap_event_name == "virtual_assessment_arm_1" & 
       is.na(mh_iudc) ~ "Have never taken"
-  ))
-#Aromatase
-redcap <- redcap %>%
-  mutate(mh_aromatase = case_when(
-    mh_aromatase == 1 ~ "Currently taking",
-    mh_aromatase == 2 ~ "Have taken in the past",
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_aromatase) ~ "Have never taken"
-  )) 
-#other
-redcap <- redcap %>%
-  mutate(mh_hormonal_other = case_when(
-    mh_hormonal_other == 1 ~ "Currently taking",
-    mh_hormonal_other == 2 ~ "Have taken in the past",
-    redcap_event_name == "virtual_assessment_arm_1" & 
-      is.na(mh_hormonal_other) ~ "Have never taken"
   ))
 #triptans use
 redcap <- redcap %>%
@@ -1792,29 +1808,29 @@ redcap <- redcap %>%
 #acetaminophen amounts
 redcap <- redcap %>%
   mutate(mh_acetaminophen_amount = case_when(
-    mh_acetaminophen_amount == 1 ~ "1-2", 
-    mh_acetaminophen_amount == 2 ~ "3-5", 
-    mh_acetaminophen_amount == 3 ~ "6-14", 
-    mh_acetaminophen_amount == 4 ~ "15+", 
+    mh_acetaminophen_amount == 1 ~ "1-5", 
+    mh_acetaminophen_amount == 2 ~ "1-5", 
+    mh_acetaminophen_amount == 3 ~ "≥6", 
+    mh_acetaminophen_amount == 4 ~ "≥6", 
     mh_acetaminophen_yn == "No" ~ "0"
   ))
 #ibuprofen amounts
 redcap <- redcap %>%
   mutate(mh_ibuprofen_amount = case_when(
-    mh_ibuprofen_amount == 1 ~ "1-2", 
-    mh_ibuprofen_amount == 2 ~ "3-5", 
-    mh_ibuprofen_amount == 3 ~ "6-14", 
-    mh_ibuprofen_amount == 4 ~ "15+", 
+    mh_ibuprofen_amount == 1 ~ "1-5", 
+    mh_ibuprofen_amount == 2 ~ "1-5", 
+    mh_ibuprofen_amount == 3 ~ "≥6", 
+    mh_ibuprofen_amount == 4 ~ "≥6", 
     mh_ibuprofen_yn == "No" ~ "0"
   )) 
 #other med amounts
 redcap <- redcap %>%
   mutate(mh_othermed_amount = case_when(
-    mh_othermed_amount == 1 ~ "1-2", 
-    mh_othermed_amount == 2 ~ "3-5", 
-    mh_othermed_amount == 3 ~ "6-14", 
-    mh_othermed_amount == 4 ~ "15+", 
-    mh_othermeds_yn == "No" ~ "0"
+    mh_othermed_amount == 1 ~ "Yes", 
+    mh_othermed_amount == 2 ~ "Yes", 
+    mh_othermed_amount == 3 ~ "Yes", 
+    mh_othermed_amount == 4 ~ "Yes", 
+    mh_othermeds_yn == "No" ~ "No"
   ))
 
 #saving file
@@ -1827,27 +1843,27 @@ redcap_table6 <- redcap %>%
     `Oral Contraceptive Pills` = mh_ocps,
     `Contraceptive Patch` = mh_patch,
     `Vaginal Ring` = mh_ring,
-    `Progestin Implant` = mh_implant,
-    `Progestin Shot` = mh_shot,
-    `Progestin Pills` = mh_p_pills,
-    `GnRH Agonists` = mh_gnrh_agonist,
-    `GnRH Antagonists` = mh_gnrh_antagonist,
+    `Progestin (implant/shot/pills)` = mh_progestin,
+    `Other hormonal medication` = mh_other_hormonal,
     `Hormonal IUD` = mh_iudh,
     `Copper IUD` = mh_iudc,
-    `Aromatase Inhibitors` = mh_aromatase,
-    `Other Hormonal Medication` = mh_hormonal_other,
     `Used triptans regularly in past year (for any indication)` = mh_triptans,
     `Used beta-blockers regularly in past year (for any indication)` = mh_betablocker, 
     `Used minor tranquilizers regularly in past year (for any indication)` = mh_tranq,
     `Number of acetaminophen tablets taken on average per period` = mh_acetaminophen_amount, 
     `Number of ibuprofen tablets taken on average per period` = mh_ibuprofen_amount, 
     `Number of other anti-inflammatory tablets taken on average per period` = mh_othermed_amount
-  )
+  ) %>%
+  mutate(Group = case_when(
+    Group == "Dysmenorrhea" ~ "Dysmenorrhea",
+    Group == "Dysmenorrhea plus Bladder Pain" ~ "DYSB",
+    Group == "Pain Free Control" ~ "Control"
+  )) %>%
+  mutate(Group = factor(Group, levels = c("Control", "Dysmenorrhea", "DYSB")))
 
 vars <- c("Oral Contraceptive Pills", "Contraceptive Patch", "Vaginal Ring", 
-          "Progestin Implant", "Progestin Shot", "Progestin Pills", 
-          "GnRH Agonists", "GnRH Antagonists", "Hormonal IUD", "Copper IUD", 
-          "Aromatase Inhibitors", "Other Hormonal Medication",
+          "Progestin (implant/shot/pills)", "Other hormonal medication", 
+          "Hormonal IUD", "Copper IUD", 
           "Used triptans regularly in past year (for any indication)",
           "Used beta-blockers regularly in past year (for any indication)", 
           "Used minor tranquilizers regularly in past year (for any indication)",
@@ -1872,7 +1888,8 @@ sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
 
 #Creating table with comparisons for DYS and DYSB
 redcap_table6_p <- redcap_table6 %>%
-  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
+  filter(Group %in% c("Dysmenorrhea", "DYSB")) %>%
+  mutate(Group = as.character(Group))
 
 comp <- CreateTableOne(vars, data = redcap_table6_p, strata = "Group")
 
@@ -1896,7 +1913,10 @@ table6 <- table6 %>%
          Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
          Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
          Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
-         Variable = trimws(Variable))                 # trim extra whitespace
+         Variable = trimws(Variable),                 # trim extra whitespace
+         Control = gsub(")", "%)", Control),          # add % symbol
+         Dysmenorrhea = gsub(")", "%)", Dysmenorrhea),# add % symbol
+         DYSB = gsub(")", "%)", DYSB))                # add % symbol
 
 #building flextable
 table6 <- flextable(table6) %>%
@@ -2031,7 +2051,13 @@ redcap_table7 <- redcap %>%
     `Fibroid removal surgery` = mh_fibroid_surg, 
     `Vaginal surgery` = mh_vaginal_surg, 
     `Other major pelvic surgery` = mh_other_surg
-  )
+  ) %>%
+  mutate(Group = case_when(
+    Group == "Dysmenorrhea" ~ "Dysmenorrhea",
+    Group == "Dysmenorrhea plus Bladder Pain" ~ "DYSB",
+    Group == "Pain Free Control" ~ "Control"
+  )) %>%
+  mutate(Group = factor(Group, levels = c("Control", "Dysmenorrhea", "DYSB")))
 
 vars = c("Diagnosed with persistent ovarian cysts", "Diagnosed with pelvic inflammatory disease", 
          "Diagnosed with chronic constipation", "Diagnosed with chronic diarrhea", 
@@ -2059,7 +2085,8 @@ sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
 
 #Creating table with comparisons for DYS and DYSB
 redcap_table7_p <- redcap_table7 %>%
-  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
+  filter(Group %in% c("Dysmenorrhea", "DYSB")) %>%
+  mutate(Group = as.character(Group))
 
 comp <- CreateTableOne(vars, data = redcap_table7_p, strata = "Group")
 
@@ -2082,7 +2109,10 @@ table7 <- table7 %>%
          Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
          Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
          Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
-         Variable = trimws(Variable))                 # trim extra whitespace
+         Variable = trimws(Variable),                 # trim extra whitespace
+         Control = gsub(")", "%)", Control),          # add % symbol
+         Dysmenorrhea = gsub(")", "%)", Dysmenorrhea),# add % symbol
+         DYSB = gsub(")", "%)", DYSB))                # add % symbol
 
 #building flextable
 table7 <- flextable(table7) %>%
@@ -2197,7 +2227,7 @@ redcap_subset_3 <- redcap %>%
                          dd_pain_3_day4, dd_pain_3_day5, na.rm = TRUE)) %>%
   slice_head() %>%
   ungroup() %>%
-  select(1, 409) 
+  select(1, 411) 
 
 redcap <- redcap %>%
   left_join(
@@ -2227,7 +2257,7 @@ redcap_subset_4 <- redcap %>%
                                dd_bleeding_m_h_day5, na.rm = TRUE)) %>%
   slice_head() %>%
   ungroup() %>%
-  select(1, 410) 
+  select(1, 412) 
 
 redcap <- redcap %>%
   left_join(
@@ -2257,7 +2287,7 @@ redcap_subset_5 <- redcap %>%
                                   dd_bleeding_day5, na.rm = TRUE)) %>%
   slice_head() %>%
   ungroup() %>%
-  select(1, 411) 
+  select(1, 413) 
 
 redcap <- redcap %>%
   left_join(
@@ -2379,7 +2409,13 @@ redcap_table8 <- redcap %>%
     `Max bowel pain` = dd_bowel_max, 
     `Max bladder pain` = dd_bladder_max, 
     `Days of pain reliever usage (5 days max)` = dd_medication
-  )
+  ) %>%
+  mutate(Group = case_when(
+    Group == "Dysmenorrhea" ~ "Dysmenorrhea",
+    Group == "Dysmenorrhea plus Bladder Pain" ~ "DYSB",
+    Group == "Pain Free Control" ~ "Control"
+  )) %>%
+  mutate(Group = factor(Group, levels = c("Control", "Dysmenorrhea", "DYSB")))
 
 
 vars = c( 
@@ -2409,7 +2445,8 @@ sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
 
 #Creating table with comparisons for DYS and DYSB
 redcap_table8_p <- redcap_table8 %>%
-  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
+  filter(Group %in% c("Dysmenorrhea", "DYSB")) %>%
+  mutate(Group = as.character(Group))
 
 comp <- CreateTableOne(vars, data = redcap_table8_p, strata = "Group")
 
@@ -2433,7 +2470,10 @@ table8 <- table8 %>%
          Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
          Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
          Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
-         Variable = trimws(Variable))                 # trim extra whitespace
+         Variable = trimws(Variable),                 # trim extra whitespace
+         Control = gsub(")", "%)", Control),          # add % symbol
+         Dysmenorrhea = gsub(")", "%)", Dysmenorrhea),# add % symbol
+         DYSB = gsub(")", "%)", DYSB))                # add % symbol
 
 #building flextable
 table8 <- flextable(table8) %>%
@@ -2532,7 +2572,13 @@ redcap_table9 <- redcap %>%
     `Max severity of dyspareunia during most recent sexual intercourse` = werf_c19, 
     `Frequency of dyspareunia, last 12 months` = werf_c21, 
     `Dyspareunia resulting in disruption of sexual intercourse` = werf_c23
-  )
+  ) %>%
+  mutate(Group = case_when(
+    Group == "Dysmenorrhea" ~ "Dysmenorrhea",
+    Group == "Dysmenorrhea plus Bladder Pain" ~ "DYSB",
+    Group == "Pain Free Control" ~ "Control"
+  )) %>%
+  mutate(Group = factor(Group, levels = c("Control", "Dysmenorrhea", "DYSB")))
 
 vars = c("Ever had dyspareunia", 
          "Age when dyspareunia began", 
@@ -2570,7 +2616,8 @@ sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
 
 #Creating table with comparisons for DYS and DYSB
 redcap_table9_p <- redcap_table9 %>%
-  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
+  filter(Group %in% c("Dysmenorrhea", "DYSB")) %>%
+  mutate(Group = as.character(Group))
 
 comp <- CreateTableOne(vars, data = redcap_table9_p, strata = "Group", factorVars = factor_vars)
 
@@ -2594,7 +2641,10 @@ table9 <- table9 %>%
          Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
          Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
          Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
-         Variable = trimws(Variable))                 # trim extra whitespace
+         Variable = trimws(Variable),                 # trim extra whitespace
+         Control = gsub(")", "%)", Control),          # add % symbol
+         Dysmenorrhea = gsub(")", "%)", Dysmenorrhea),# add % symbol
+         DYSB = gsub(")", "%)", DYSB))                # add % symbol
 
 #building flextable
 table9 <- flextable(table9) %>%
@@ -2693,7 +2743,13 @@ redcap_table10 <- redcap %>%
     `Pain with tampon test` = tampon_test, 
     `Understanding of bladder task` = understanding_yn, 
     `Focus during bladder task` = understanding_focus
-  )
+  ) %>%
+  mutate(Group = case_when(
+    Group == "Dysmenorrhea" ~ "Dysmenorrhea",
+    Group == "Dysmenorrhea plus Bladder Pain" ~ "DYSB",
+    Group == "Pain Free Control" ~ "Control"
+  )) %>%
+  mutate(Group = factor(Group, levels = c("Control", "Dysmenorrhea", "DYSB")))
 
 vars <- c("Time to FS (mins)",
           "Time to FU (mins)",
@@ -2730,7 +2786,8 @@ sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
 
 #Creating table with comparisons for DYS and DYSB
 redcap_table10_p <- redcap_table10 %>%
-  filter(Group %in% c("Dysmenorrhea", "Dysmenorrhea plus Bladder Pain"))
+  filter(Group %in% c("Dysmenorrhea", "DYSB")) %>%
+  mutate(Group = as.character(Group))
 
 comp <- CreateTableOne(vars, data = redcap_table10_p, strata = "Group",
                        factorVars = "Capped out of bladder task")
@@ -2755,7 +2812,10 @@ table10 <- table10 %>%
          Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
          Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
          Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
-         Variable = trimws(Variable))                 # trim extra whitespace
+         Variable = trimws(Variable),                 # trim extra whitespace
+         Control = gsub(")", "%)", Control),          # add % symbol
+         Dysmenorrhea = gsub(")", "%)", Dysmenorrhea),# add % symbol
+         DYSB = gsub(")", "%)", DYSB))                # add % symbol
 
 #building flextable
 table10 <- flextable(table10) %>%
