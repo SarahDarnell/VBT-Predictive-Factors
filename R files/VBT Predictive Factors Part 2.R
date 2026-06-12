@@ -6,6 +6,9 @@ library(dplyr)
 library(ggplot2)
 library(ghibli)
 library(ragg)
+library(patchwork)
+library(flextable)
+library(reshape)
 
 #set working directory
 setwd("~/Sarah work stuff/2025 Data Projects/VBT Predictive Factors CRAMPP2")
@@ -87,57 +90,91 @@ ggsave("Plots/figure3_scatt.png", plot = scatter_plot_fupain_v2, width = 5, heig
 ##CPP measures box plots (GSRS, ICSI, GUPI)##
 #############################################
 
+redcap_plots <- redcap %>%
+  mutate(Group = case_when(
+    Group == "Dysmenorrhea" ~ "Dysmenorrhea",
+    Group == "Dysmenorrhea plus Bladder Pain" ~ "DYSB",
+    Group == "Pain Free Control" ~ "Control"
+  )) %>%
+  mutate(Group = factor(Group, levels = c("Control", "Dysmenorrhea", "DYSB")))
+
+ghibli_cols <- rev(ghibli_palette("YesterdayMedium", type = "discrete"))
+
+my_colors <- c(
+  "Control"      = ghibli_cols[3],   # green
+  "Dysmenorrhea" = ghibli_cols[1],   # blue
+  "DYSB"         = ghibli_cols[2]    # yellow
+)
+
 #GSRS box plot
-ggplot(redcap, aes(x = Group, y = gsrs_bl)) +
-  geom_boxplot(outlier.shape = 21, outlier.size = 2, alpha = 0.8) +
+gsrs <- ggplot(redcap_plots, aes(x = Group, y = gsrs_bl, fill = Group)) +
+  geom_boxplot(outlier.shape = 21, outlier.size = 2, alpha = 0.8, linewidth = 0.3) +
+  scale_fill_manual (values = my_colors) +
   theme_bw(base_size = 14) +
   theme(
     legend.position = "none",
     panel.grid.major.x = element_blank(),
-    axis.title.x = element_blank()
+    axis.title = element_blank(), 
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    plot.title = element_text(hjust = 0.5)
   ) +
   labs(
-    y = "GSRS"
+    title = "GSRS"
   )
 
 #ICSI box plot
-ggplot(redcap, aes(x = Group, y = icsi_bl)) +
-  geom_boxplot(outlier.shape = 21, outlier.size = 2, alpha = 0.8) +
+icsi <- ggplot(redcap_plots, aes(x = Group, y = icsi_bl, fill = Group)) +
+  geom_boxplot(outlier.shape = 21, outlier.size = 2, alpha = 0.8, linewidth = 0.3) +
+  scale_fill_manual (values = my_colors) +
   theme_bw(base_size = 14) +
   theme(
     legend.position = "none",
     panel.grid.major.x = element_blank(),
-    axis.title.x = element_blank()
+    axis.title = element_blank(), 
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    plot.title = element_text(hjust = 0.5)
   ) +
   labs(
-    y = "ICSI"
+    title = "ICSI"
   )
 
 #GUPI box plot
-ggplot(redcap, aes(x = Group, y = gupi_bl)) +
-  geom_boxplot(outlier.shape = 21, outlier.size = 2, alpha = 0.8) +
+gupi <- ggplot(redcap_plots, aes(x = Group, y = gupi_bl, fill = Group)) +
+  geom_boxplot(outlier.shape = 21, outlier.size = 2, alpha = 0.8, linewidth = 0.3) +
+  scale_fill_manual (values = my_colors) +
   theme_bw(base_size = 14) +
   theme(
-    legend.position = "none",
+    legend.position = "bottom",
+    legend.title = element_blank(),
     panel.grid.major.x = element_blank(),
-    axis.title.x = element_blank()
-  ) +
-  labs(
-    y = "GUPI"
+    axis.title = element_blank(), 
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    plot.title = element_text(hjust = 0.5)
+  ) + labs(
+    title = "GUPI"
   )
 
+design <- "
+123
+123
+123"
+
+fig5 <- icsi + gupi + gsrs + plot_layout(design = design)
+
+ggsave("Plots/figure5_box.png", plot = fig5, width = 5, height = 4, 
+       dpi = 600, units = "in", device = "png")
 
 ##############################################
 ## Correlation matrices (GSRS, ICSI, GUPI ) ##
 ##############################################
 
-#uncomment to save output
-sink("Logs/5.26/cor_matrix_subset_log.txt")
-
 #subset needed variables
-correlation_subset <- redcap %>%
+correlation_subset <- redcap_plots %>%
   filter(redcap_event_name == "virtual_assessment_arm_1") %>%
-  filter(Group == "Dysmenorrhea" | Group == "Dysmenorrhea plus Bladder Pain") %>%
+  filter(Group == "Dysmenorrhea" | Group == "DYSB") %>%
   select(record_id, vbt_fu_pain, bl_urine_ml, 
          gupi_bl, icsi_bl, gsrs_bl, mcgill_1,
          mcgill_2, mcgill_3)
@@ -147,9 +184,37 @@ vars <- correlation_subset %>% select(vbt_fu_pain, bl_urine_ml,
                                       mcgill_1, mcgill_2, mcgill_3)
 
 #spearman matrix
-cor(vars, method = "spearman", use = "pairwise.complete.obs")
+table8 <- cor(vars, method = "spearman", use = "pairwise.complete.obs")
 
-sink()
+#save as table
+as.data.frame(round(table8, 3)) %>%
+  tibble::rownames_to_column(" ") %>%
+  flextable()
+
+save_as_docx(table8, path = "Tables/Final/Table8_corr.docx")
+
+#heatmap
+heatmap <- melt(table8) |>
+  ggplot(aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0,
+                       limits = c(-1, 1), name = "r") +
+  theme_bw() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.title = element_blank()
+  ) +
+  geom_text(aes(label = round(value, 3)), size = 3)
+
+ggsave("Plots/figure6_heatmap.png", plot = heatmap, width = 5, height = 4, 
+       dpi = 600, units = "in", device = "png")
+
+
+
+
+
+
+
 
 
 ###########################################
