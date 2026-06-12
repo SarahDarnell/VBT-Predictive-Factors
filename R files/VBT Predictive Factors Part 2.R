@@ -187,11 +187,13 @@ vars <- correlation_subset %>% select(vbt_fu_pain, bl_urine_ml,
 table8 <- cor(vars, method = "spearman", use = "pairwise.complete.obs")
 
 #save as table
-as.data.frame(round(table8, 3)) %>%
-  tibble::rownames_to_column(" ") %>%
+ft <- as.data.frame(round(table8, 3)) %>%
+  tibble::rownames_to_column("Variable") %>%
   flextable()
 
-save_as_docx(table8, path = "Tables/Final/Table8_corr.docx")
+print(ft)
+
+save_as_docx(ft, path = "Tables/Final/Table8_corr.docx")
 
 #heatmap
 heatmap <- melt(table8) |>
