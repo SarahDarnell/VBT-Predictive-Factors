@@ -233,7 +233,7 @@ heatmap <- ggplot(melted_corr, aes(x = Var2, y = Var1, fill = value)) +
   coord_fixed()
 
 
-ggsave("Plots/figure6_heatmap.png", plot = heatmap, width = 5, height = 4, 
+ggsave("Plots/figure6_heatmap_v2.png", plot = heatmap, width = 5, height = 4, 
        dpi = 600, units = "in", device = "png")
 
 
