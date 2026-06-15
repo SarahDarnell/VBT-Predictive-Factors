@@ -221,7 +221,8 @@ heatmap <- ggplot(melted_corr, aes(x = Var2, y = Var1, fill = value)) +
     low = "blue", mid = "white", high = "red",
     midpoint = 0,
     limits = c(-1, 1),
-    na.value = "white"
+    na.value = "white",
+    name = ""
   ) +
   theme_minimal() +
   theme(
