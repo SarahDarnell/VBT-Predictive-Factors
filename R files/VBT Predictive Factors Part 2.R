@@ -220,7 +220,8 @@ heatmap <- ggplot(melted_corr, aes(x = Var2, y = Var1, fill = value)) +
   scale_fill_gradient2(
     low = "blue", mid = "white", high = "red",
     midpoint = 0,
-    limits = c(-1, 1),
+    limits = c(-.6, .6),
+    breaks = seq(-.6, .6, by = 0.3),
     na.value = "white",
     name = ""
   ) +
@@ -233,7 +234,7 @@ heatmap <- ggplot(melted_corr, aes(x = Var2, y = Var1, fill = value)) +
   coord_fixed()
 
 
-ggsave("Plots/figure6_heatmap_v2.png", plot = heatmap, width = 5, height = 4, 
+ggsave("Plots/figure6_heatmap_v3.png", plot = heatmap, width = 5, height = 4, 
        dpi = 600, units = "in", device = "png")
 
 
