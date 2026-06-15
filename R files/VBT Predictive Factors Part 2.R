@@ -196,17 +196,41 @@ print(ft)
 save_as_docx(ft, path = "Tables/Final/Table8_corr.docx")
 
 #heatmap
-heatmap <- melt(table8) |>
-  ggplot(aes(x = Var1, y = Var2, fill = value)) +
-  geom_tile() +
-  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0,
-                       limits = c(-1, 1), name = "r") +
-  theme_bw() +
+#Mask diagonal (the 1s)
+table8_masked <- table8
+diag(table8_masked) <- NA
+
+# Rename rows and columns with nicer labels
+new_names <- c("FU Pain", "Urine (ml)", "GUPI", "ICSI", "GSRS", 
+               "Pelvic Pain", "Bladder Pain", "Bowel Pain")
+
+rownames(table8_masked) <- new_names
+colnames(table8_masked) <- new_names
+
+# Melt to long format for ggplot
+melted_corr <- reshape2::melt(table8_masked, na.rm = FALSE)
+
+# Determine color scale limits from non-diagonal values only
+corr_range <- range(table8_masked, na.rm = TRUE)
+
+heatmap <- ggplot(melted_corr, aes(x = Var2, y = Var1, fill = value)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = ifelse(is.na(value), "", sprintf("%.2f", value))), 
+            color = "black", size = 4) +
+  scale_fill_gradient2(
+    low = "blue", mid = "white", high = "red",
+    midpoint = 0,
+    limits = c(-1, 1),
+    na.value = "white"
+  ) +
+  theme_minimal() +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
-    axis.title = element_blank()
+    axis.title = element_blank(),
+    panel.grid = element_blank()
   ) +
-  geom_text(aes(label = round(value, 3)), size = 3)
+  coord_fixed()
+
 
 ggsave("Plots/figure6_heatmap.png", plot = heatmap, width = 5, height = 4, 
        dpi = 600, units = "in", device = "png")
