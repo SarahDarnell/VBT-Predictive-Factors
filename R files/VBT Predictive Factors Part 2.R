@@ -202,7 +202,7 @@ diag(table8_masked) <- NA
 
 # Rename rows and columns with nicer labels
 new_names <- c("FU Pain", "Urine (ml)", "GUPI", "ICSI", "GSRS", 
-               "Pelvic Pain", "Bladder Pain", "Bowel Pain")
+               "NMPP", "Dysuria", "Dyschezia")
 
 rownames(table8_masked) <- new_names
 colnames(table8_masked) <- new_names
@@ -216,7 +216,7 @@ corr_range <- range(table8_masked, na.rm = TRUE)
 heatmap <- ggplot(melted_corr, aes(x = Var2, y = Var1, fill = value)) +
   geom_tile(color = "white") +
   geom_text(aes(label = ifelse(is.na(value), "", sprintf("%.2f", value))), 
-            color = "black", size = 4) +
+            color = "black", size = 3.4) +
   scale_fill_gradient2(
     low = "blue", mid = "white", high = "red",
     midpoint = 0,
@@ -234,7 +234,7 @@ heatmap <- ggplot(melted_corr, aes(x = Var2, y = Var1, fill = value)) +
   coord_fixed()
 
 
-ggsave("Plots/figure6_heatmap_v3.png", plot = heatmap, width = 5, height = 4, 
+ggsave("Plots/figure6_heatmap_v4.png", plot = heatmap, width = 5, height = 4, 
        dpi = 600, units = "in", device = "png")
 
 
