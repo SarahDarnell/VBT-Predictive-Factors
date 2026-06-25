@@ -226,6 +226,7 @@ heatmap <- ggplot(melted_corr, aes(x = Var2, y = Var1, fill = value)) +
     name = ""
   ) +
   theme_minimal() +
+  theme_bw() +
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
     axis.title = element_blank(),
