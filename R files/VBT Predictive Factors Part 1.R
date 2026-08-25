@@ -2935,6 +2935,96 @@ kruskal.test(bodymap_7_sum ~ Group, data = redcap_bodymap_no_C)
 
 sink()
 
+#edit calculation for IBS and BPS criteria
+
+#import new calcs
+redcap_new <- read_csv("Raw files/EH22236CRAMPP2-VBTPredictiveFactors_DATA_2026-08-25_1138.csv")
+
+#edit event name, change names of ibs and bps flags
+redcap_new <- redcap_new %>%
+  mutate(redcap_event_name = case_when(
+    redcap_event_name == "consent_ids_arm_1" ~ "virtual_assessment_arm_1")) %>%
+  rename_at('bps_ic_bl', ~ 'bps_ic_bl_new') %>%
+  rename_at('ibs_bl', ~ 'ibs_bl_new')
+  
+#merge into larger dataset
+redcap <- left_join(redcap, redcap_new, by = c("record_id", "redcap_event_name"))
+
+write_csv(redcap, "Edited data files/redcap_post_table10.csv") 
+
+redcap_ibs_bps_table <- redcap %>%
+  filter(redcap_event_name == "virtual_assessment_arm_1") %>%
+  mutate(Group = case_when(
+    Group == "Dysmenorrhea" ~ "Dysmenorrhea",
+    Group == "Dysmenorrhea plus Bladder Pain" ~ "DYSB",
+    Group == "Pain Free Control" ~ "Control"
+  )) %>%
+  mutate(Group = factor(Group, levels = c("Control", "Dysmenorrhea", "DYSB")))
+
+vars <- c("bps_ic_bl_new", "ibs_bl_new")
+
+sum <- CreateTableOne(vars, data = redcap_ibs_bps_table, strata = "Group", 
+                      factorVars = vars)
+
+sum_df <- as.data.frame(print(sum,
+                              printToggle = FALSE,
+                              quote = FALSE,
+                              noSpaces = TRUE,
+                              showAllLevels = FALSE))
+
+# Remove test columns
+cols_to_remove <- "test"
+sum_df <- sum_df[, !colnames(sum_df) %in% cols_to_remove]
+
+#Creating table with comparisons for DYS and DYSB
+redcap_ibs_bps_table_p <- redcap_ibs_bps_table %>%
+  filter(Group %in% c("Dysmenorrhea", "DYSB")) %>%
+  mutate(Group = as.character(Group))
+
+comp <- CreateTableOne(vars, data = redcap_ibs_bps_table_p, strata = "Group",
+                       factorVars = vars)
+
+comp_df <- as.data.frame(print(comp,
+                               printToggle = FALSE,
+                               quote = FALSE,
+                               noSpaces = TRUE,
+                               showAllLevels = FALSE)) %>%
+  dplyr::select("p")
+
+#merge summary and comparison tables
+redcap_ibs_bps <- cbind(sum_df, p_dys_dysb = comp_df$p )
+
+#clean up
+redcap_ibs_bps <- redcap_ibs_bps %>%
+  rownames_to_column("Variable")
+
+redcap_ibs_bps <- redcap_ibs_bps %>%
+  mutate(Variable = gsub("\\.\\.\\.", " ", Variable), # replace ... with space
+         Variable = gsub("\\.\\.+", " ", Variable),   # replace .. with space
+         Variable = gsub("\\.", " ", Variable),       # replace remaining dots with space
+         Variable = gsub("^X\\s+", "  ", Variable),   # replace leading X + space with indent
+         Variable = trimws(Variable),                 # trim extra whitespace
+         Control = gsub(")", "%)", Control),          # add % symbol
+         Dysmenorrhea = gsub(")", "%)", Dysmenorrhea),# add % symbol
+         DYSB = gsub(")", "%)", DYSB))                # add % symbol
+
+#building flextable
+redcap_ibs_bps <- flextable(redcap_ibs_bps) %>%
+  set_header_labels(Variable = "") %>%        # removes "Variable" header
+  autofit() %>%                               # fits column widths to content
+  bold(part = "header") %>%                   # bold header row
+  hline_top(part = "header", 
+            border = fp_border(width = 1.5)) %>%   # line above header
+  hline_bottom(part = "header", 
+               border = fp_border(width = 1.5)) %>% # line below header
+  hline_bottom(part = "body", 
+               border = fp_border(width = 1.5)) %>% # line at bottom
+  font(fontname = "Arial", part = "all") %>%
+  fontsize(size = 9, part = "all")
+
+save_as_docx(redcap_ibs_bps, path = "Tables/Final/Table_ibs_bps.docx")
+
+
 
 #OLD
 #####################################
